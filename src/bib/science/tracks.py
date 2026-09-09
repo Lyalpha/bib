@@ -45,7 +45,11 @@ def mass_loss_rate(age_yr: np.ndarray, mass: np.ndarray) -> np.ndarray:
     rate = np.zeros_like(m)
     if m.size < 2:
         return rate
-    dm = np.gradient(m, age, edge_order=1)
+    # tracks may contain repeated ages (e.g. rapid CEE steps): np.gradient
+    # would divide by zero, so nudge duplicates apart by a negligible amount
+    safe_age = np.maximum.accumulate(age + np.arange(age.size) * 1e-9)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        dm = np.gradient(m, safe_age, edge_order=1)
     rate = np.abs(np.minimum(dm, 0.0))  # mass loss only
     rate[~np.isfinite(rate)] = 0.0
     return rate

@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 313d4ae941c0
+Revision ID: 7751d6e64a35
 Revises: 
-Create Date: 2026-09-09 18:39:07.220502
+Create Date: 2026-09-09 19:10:46.831423
 
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '313d4ae941c0'
+revision = '7751d6e64a35'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -159,6 +159,9 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('model_id', 'step', name=op.f('pk_stellar_model_step'))
     )
     op.create_table('colours',
+    sa.Column('population_id', sa.Integer(), nullable=False),
+    sa.Column('age_index', sa.SmallInteger(), nullable=False),
+    sa.Column('log_age', sa.Float(precision=53), nullable=False),
     sa.Column('v_minus_i', sa.Float(precision=53), nullable=False),
     sa.Column('mag_u', sa.Float(precision=53), nullable=False),
     sa.Column('mag_b', sa.Float(precision=53), nullable=False),
@@ -180,57 +183,57 @@ def upgrade() -> None:
     sa.Column('f555w', sa.Float(precision=53), nullable=False),
     sa.Column('f606w', sa.Float(precision=53), nullable=False),
     sa.Column('f814w', sa.Float(precision=53), nullable=False),
-    sa.Column('age_index', sa.SmallInteger(), nullable=False),
-    sa.Column('log_age', sa.Float(precision=53), nullable=False),
-    sa.Column('population_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['population_id'], ['population.id'], name=op.f('fk_colours_population_id_population'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('age_index', 'population_id', name=op.f('pk_colours'))
+    sa.PrimaryKeyConstraint('population_id', 'age_index', name=op.f('pk_colours'))
     )
     op.create_table('hrd_grid',
+    sa.Column('population_id', sa.Integer(), nullable=False),
+    sa.Column('age_index', sa.SmallInteger(), nullable=False),
+    sa.Column('log_age', sa.Float(precision=53), nullable=False),
     sa.Column('diagram', sa.String(length=3), nullable=False),
     sa.Column('h_class', sa.SmallInteger(), nullable=False),
     sa.Column('grid', sa.LargeBinary(), nullable=False),
-    sa.Column('age_index', sa.SmallInteger(), nullable=False),
-    sa.Column('log_age', sa.Float(precision=53), nullable=False),
-    sa.Column('population_id', sa.Integer(), nullable=False),
     sa.CheckConstraint("diagram IN ('TL', 'TG', 'TTG')", name=op.f('ck_hrd_grid_diagram_valid')),
     sa.CheckConstraint('h_class IN (0, 1, 2)', name=op.f('ck_hrd_grid_h_class_valid')),
     sa.ForeignKeyConstraint(['population_id'], ['population.id'], name=op.f('fk_hrd_grid_population_id_population'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('diagram', 'h_class', 'age_index', 'population_id', name=op.f('pk_hrd_grid'))
+    sa.PrimaryKeyConstraint('population_id', 'age_index', 'diagram', 'h_class', name=op.f('pk_hrd_grid'))
     )
     op.create_table('ionizing',
+    sa.Column('population_id', sa.Integer(), nullable=False),
+    sa.Column('age_index', sa.SmallInteger(), nullable=False),
+    sa.Column('log_age', sa.Float(precision=53), nullable=False),
     sa.Column('log_nion', sa.Float(precision=53), nullable=False),
     sa.Column('log_l_halpha', sa.Float(precision=53), nullable=False),
     sa.Column('log_l_fuv', sa.Float(precision=53), nullable=False),
     sa.Column('log_l_nuv', sa.Float(precision=53), nullable=False),
-    sa.Column('age_index', sa.SmallInteger(), nullable=False),
-    sa.Column('log_age', sa.Float(precision=53), nullable=False),
-    sa.Column('population_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['population_id'], ['population.id'], name=op.f('fk_ionizing_population_id_population'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('age_index', 'population_id', name=op.f('pk_ionizing'))
+    sa.PrimaryKeyConstraint('population_id', 'age_index', name=op.f('pk_ionizing'))
     )
     op.create_table('mlratio',
-    sa.Column('ml_k', sa.Float(precision=53), nullable=False),
-    sa.Column('ml_v', sa.Float(precision=53), nullable=False),
+    sa.Column('population_id', sa.Integer(), nullable=False),
     sa.Column('age_index', sa.SmallInteger(), nullable=False),
     sa.Column('log_age', sa.Float(precision=53), nullable=False),
-    sa.Column('population_id', sa.Integer(), nullable=False),
+    sa.Column('ml_k', sa.Float(precision=53), nullable=False),
+    sa.Column('ml_v', sa.Float(precision=53), nullable=False),
     sa.ForeignKeyConstraint(['population_id'], ['population.id'], name=op.f('fk_mlratio_population_id_population'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('age_index', 'population_id', name=op.f('pk_mlratio'))
+    sa.PrimaryKeyConstraint('population_id', 'age_index', name=op.f('pk_mlratio'))
     )
     op.create_table('sed',
+    sa.Column('population_id', sa.Integer(), nullable=False),
+    sa.Column('age_index', sa.SmallInteger(), nullable=False),
+    sa.Column('log_age', sa.Float(precision=53), nullable=False),
     sa.Column('n_points', sa.Integer(), nullable=False),
     sa.Column('flux', sa.LargeBinary(), nullable=False),
     sa.Column('n_points_ds', sa.Integer(), nullable=False),
     sa.Column('flux_ds', sa.LargeBinary(), nullable=False),
     sa.Column('log_lbol', sa.Float(precision=53), nullable=True),
-    sa.Column('age_index', sa.SmallInteger(), nullable=False),
-    sa.Column('log_age', sa.Float(precision=53), nullable=False),
-    sa.Column('population_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['population_id'], ['population.id'], name=op.f('fk_sed_population_id_population'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('age_index', 'population_id', name=op.f('pk_sed'))
+    sa.PrimaryKeyConstraint('population_id', 'age_index', name=op.f('pk_sed'))
     )
     op.create_table('sn_rates',
+    sa.Column('population_id', sa.Integer(), nullable=False),
+    sa.Column('age_index', sa.SmallInteger(), nullable=False),
+    sa.Column('log_age', sa.Float(precision=53), nullable=False),
     sa.Column('n_ia', sa.Float(precision=53), nullable=False),
     sa.Column('n_iip', sa.Float(precision=53), nullable=False),
     sa.Column('n_ii_other', sa.Float(precision=53), nullable=False),
@@ -248,22 +251,22 @@ def upgrade() -> None:
     sa.Column('e_pisn', sa.Float(precision=53), nullable=False),
     sa.Column('e_low_mass', sa.Float(precision=53), nullable=False),
     sa.Column('bin_width_yr', sa.Float(precision=53), nullable=False),
-    sa.Column('age_index', sa.SmallInteger(), nullable=False),
-    sa.Column('log_age', sa.Float(precision=53), nullable=False),
-    sa.Column('population_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['population_id'], ['population.id'], name=op.f('fk_sn_rates_population_id_population'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('age_index', 'population_id', name=op.f('pk_sn_rates'))
+    sa.PrimaryKeyConstraint('population_id', 'age_index', name=op.f('pk_sn_rates'))
     )
     op.create_table('starmass',
-    sa.Column('mass_stars', sa.Float(precision=53), nullable=False),
-    sa.Column('mass_remnants', sa.Float(precision=53), nullable=True),
+    sa.Column('population_id', sa.Integer(), nullable=False),
     sa.Column('age_index', sa.SmallInteger(), nullable=False),
     sa.Column('log_age', sa.Float(precision=53), nullable=False),
-    sa.Column('population_id', sa.Integer(), nullable=False),
+    sa.Column('mass_stars', sa.Float(precision=53), nullable=False),
+    sa.Column('mass_remnants', sa.Float(precision=53), nullable=True),
     sa.ForeignKeyConstraint(['population_id'], ['population.id'], name=op.f('fk_starmass_population_id_population'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('age_index', 'population_id', name=op.f('pk_starmass'))
+    sa.PrimaryKeyConstraint('population_id', 'age_index', name=op.f('pk_starmass'))
     )
     op.create_table('yields',
+    sa.Column('population_id', sa.Integer(), nullable=False),
+    sa.Column('age_index', sa.SmallInteger(), nullable=False),
+    sa.Column('log_age', sa.Float(precision=53), nullable=False),
     sa.Column('wind_h', sa.Float(precision=53), nullable=False),
     sa.Column('wind_he', sa.Float(precision=53), nullable=False),
     sa.Column('wind_z', sa.Float(precision=53), nullable=False),
@@ -272,11 +275,8 @@ def upgrade() -> None:
     sa.Column('sn_h', sa.Float(precision=53), nullable=False),
     sa.Column('sn_he', sa.Float(precision=53), nullable=False),
     sa.Column('sn_z', sa.Float(precision=53), nullable=False),
-    sa.Column('age_index', sa.SmallInteger(), nullable=False),
-    sa.Column('log_age', sa.Float(precision=53), nullable=False),
-    sa.Column('population_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['population_id'], ['population.id'], name=op.f('fk_yields_population_id_population'), ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('age_index', 'population_id', name=op.f('pk_yields'))
+    sa.PrimaryKeyConstraint('population_id', 'age_index', name=op.f('pk_yields'))
     )
     # ### end Alembic commands ###
 

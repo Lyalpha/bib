@@ -1,14 +1,17 @@
-"""REST API v1.
+"""API v1: versioned REST interface consumed by the bib UI (and by you).
 
-The API is the foundation for the future generic query builder: everything the
-web UI renders is fetched from these endpoints, so any analysis available in
-the browser is scriptable too.
+Interactive documentation: /api/docs (Swagger) and /api/redoc.
 """
-
-from __future__ import annotations
 
 from fastapi import APIRouter
 
-router = APIRouter(tags=["bib API v1"])
+router = APIRouter(tags=["v1"])  # mounted under /api/v1 by the app factory
 
-from bib.api.v1 import endpoints as _endpoints  # noqa: E402,F401  (registers routes)
+from bib.api.v1 import endpoints, filters, meta, photometry, populations, stellar_models  # noqa: E402
+
+router.include_router(endpoints.router)
+router.include_router(meta.router)
+router.include_router(populations.router)
+router.include_router(filters.router)
+router.include_router(photometry.router)
+router.include_router(stellar_models.router)

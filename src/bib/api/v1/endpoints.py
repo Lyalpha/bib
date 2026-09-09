@@ -1,9 +1,12 @@
-"""API v1 endpoint registrations (filled in incrementally)."""
+"""Basic service endpoints."""
 
 from __future__ import annotations
 
+from fastapi import APIRouter
+
 from bib import __version__
-from bib.api.v1 import router
+
+router = APIRouter()
 
 
 @router.get("/health", summary="Liveness probe")

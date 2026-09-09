@@ -1,0 +1,71 @@
+"""Shared helpers for API v1 endpoints."""
+
+from __future__ import annotations
+
+import base64
+
+import numpy as np
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from bib.db import models as m
+
+
+def sig_round(values: np.ndarray, digits: int = 4) -> list[float]:
+    """Round to significant digits (keeps JSON payloads compact)."""
+    a = np.asarray(values, dtype=float)
+    out = np.zeros_like(a)
+    finite = np.isfinite(a) & (a != 0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        scale = 10.0 ** (digits - 1 - np.floor(np.log10(np.abs(a[finite]))))
+    out[finite] = np.round(a[finite] * scale) / scale
+    out[~np.isfinite(a)] = np.nan
+    return [None if not np.isfinite(v) else float(v) for v in out]
+
+
+def encode_u8_log(grid: np.ndarray, global_max: float, floor_ratio: float = 1e-4) -> str:
+    """Quantize a non-negative grid to log-scaled uint8 and base64-encode it.
+
+    0 = empty; 1..255 spans log10(global_max * floor_ratio) .. log10(global_max).
+    """
+    if global_max <= 0:
+        return base64.b64encode(np.zeros(grid.size, dtype=np.uint8).tobytes()).decode()
+    lo = np.log10(global_max * floor_ratio)
+    hi = np.log10(global_max)
+    with np.errstate(divide="ignore"):
+        logs = np.log10(np.clip(grid, 0.0, None))
+    q = np.zeros(grid.shape, dtype=np.uint8)
+    mask = logs > lo
+    q[mask] = np.clip(
+        1 + np.round(254 * (logs[mask] - lo) / max(hi - lo, 1e-12)), 1, 255
+    ).astype(np.uint8)
+    return base64.b64encode(q.tobytes()).decode()
+
+
+def get_population_or_404(session: Session, population_id: int) -> m.Population:
+    population = session.get(m.Population, population_id)
+    if population is None:
+        raise HTTPException(status_code=404, detail=f"population {population_id} not found")
+    return population
+
+
+def get_model_or_404(session: Session, model_id: int) -> m.StellarModel:
+    model = session.get(m.StellarModel, model_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail=f"stellar model {model_id} not found")
+    return model
+
+
+def population_summary(p: m.Population) -> dict:
+    return {
+        "id": p.id,
+        "release": p.release.version,
+        "imf": p.imf,
+        "z_label": p.z_label,
+        "z_value": p.z_value,
+        "pop_type": p.pop_type,
+        "alpha_label": p.alpha_label,
+        "alpha_value": p.alpha_value,
+        "is_synthetic": p.is_synthetic,
+        "products": (p.extra or {}).get("products", []),
+    }

@@ -145,16 +145,22 @@ class Population(Base):
 
 
 class AgeRowMixin:
-    """Row keyed by (population, age bin). log(age/yr) = 6.0 + 0.1 * age_index."""
+    """Row keyed by (population, age bin). log(age/yr) = 6.0 + 0.1 * age_index.
+
+    ``sort_order`` puts these columns (and the PK) first: the btree then
+    clusters by population, which matches every query we make.
+    """
 
     @declared_attr
     def population_id(cls) -> Mapped[int]:  # noqa: N805
         return mapped_column(
-            ForeignKey("population.id", ondelete="CASCADE"), primary_key=True
+            ForeignKey("population.id", ondelete="CASCADE"),
+            primary_key=True,
+            sort_order=-3,
         )
 
-    age_index: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
-    log_age: Mapped[float]
+    age_index: Mapped[int] = mapped_column(SmallInteger, primary_key=True, sort_order=-2)
+    log_age: Mapped[float] = mapped_column(sort_order=-1)
 
 
 class Sed(AgeRowMixin, Base):

@@ -66,28 +66,29 @@ def make_display_edges(wavelength: np.ndarray, target_points: int = 4000) -> np.
     if lo <= 0:
         raise ValueError("wavelengths must be positive")
     dex = np.log10(hi / lo) / target_points
-    native_step = float(np.median(np.diff(wl)))
 
-    # Below wl_break the native step exceeds the log-bin width -> keep native.
-    wl_break = native_step / (np.log(10.0) * dex)
-    wl_break = min(max(wl_break, lo), hi)
+    # Keep native sampling wherever the local native step is coarser than the
+    # target log-bin width (works for linear *and* log native grids).
+    d_native = np.diff(wl)
+    d_target = wl[:-1] * np.log(10.0) * dex
+    finer = d_native < d_target  # native finer than target -> rebin from here
+    if not np.any(finer):
+        # native grid is coarser than the target everywhere: keep it whole
+        mid = 0.5 * (wl[1:] + wl[:-1])
+        return np.concatenate(([wl[0] - 0.5 * d_native[0]], mid, [wl[-1] + 0.5 * d_native[-1]]))
+    break_idx = int(np.argmax(finer))  # first index where native is finer
 
-    native_part = wl[(wl >= lo) & (wl < wl_break)]
-    if native_part.size >= 2:
-        native_edges = np.concatenate(
-            (
-                [native_part[0] - 0.5 * native_step],
-                0.5 * (native_part[1:] + native_part[:-1]),
-                [native_part[-1] + 0.5 * native_step],
-            )
-        )
+    if break_idx >= 2:
+        native_part = wl[: break_idx + 1]
+        mid = 0.5 * (native_part[1:] + native_part[:-1])
+        native_edges = np.concatenate(([native_part[0] - 0.5 * d_native[0]], mid))
+        log_start = float(wl[break_idx])
     else:
         native_edges = np.array([lo])
+        log_start = lo
 
-    log_start = max(wl_break, float(native_edges[-1]))
     n_log = max(int(np.ceil(np.log10(hi / log_start) / dex)), 1)
     log_edges = np.logspace(np.log10(log_start), np.log10(hi), n_log + 1)
-
     edges = np.unique(np.concatenate((native_edges, log_edges)))
     return edges
 
