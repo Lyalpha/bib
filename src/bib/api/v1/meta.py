@@ -26,6 +26,7 @@ def get_meta(db: Session = Depends(get_db)) -> dict:
             continue
         releases.append(
             {
+                "id": release.id,
                 "version": release.version,
                 "name": release.name,
                 "citation": release.citation,
