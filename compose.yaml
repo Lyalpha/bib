@@ -1,0 +1,41 @@
+# bib — one-command sandbox.
+#
+#   podman compose up --build     (or: docker compose up --build)
+#
+# Brings up PostgreSQL and the bib app, initialises the schema, seeds the
+# synthetic demo dataset if the database is empty, and serves on
+# http://localhost:8000
+#
+# Kept podman-compose friendly: no docker-only features; readiness is handled
+# by a wait loop inside the app entrypoint rather than compose conditions.
+
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: bib
+      POSTGRES_PASSWORD: bib
+      POSTGRES_DB: bib
+    volumes:
+      - bib-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bib -d bib"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: bib:latest
+    environment:
+      DATABASE_URL: postgresql+psycopg://bib:bib@db:5432/bib
+      BIB_DEMO_SEED: "1"        # seed synthetic demo data on first start
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  bib-pgdata:

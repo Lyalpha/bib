@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+site/
+
+# Environment / secrets
+.env
+*.local.yaml
+
+# Data (raw BPASS downloads and scratch artefacts live outside git)
+/data/raw/
+/data/scratch/
+*.tar
+*.tar.gz
+
+# Editors
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# bib branding configuration
+#
+# Everything visual that identifies the deployment lives here: names, tagline,
+# colour palette and (optionally) a logo. Colours are injected into the base
+# template as CSS custom properties, so any CSS in the app can use them as
+# var(--brand-primary) etc. Point BIB_BRANDING_FILE at a copy of this file to
+# rebrand a deployment without touching the package.
+# ---------------------------------------------------------------------------
+
+site_name: "bib"
+full_name: "BPASS-in-Browser"
+tagline: "Explore binary stellar populations, interactively."
+
+# Optional path (relative to this file) to a logo image shown in the header.
+# Leave null to use the built-in glyph.
+logo: null
+
+# Colour palette. Defaults are a dark "deep-sky" theme.
+colors:
+  bg: "#0b1020"          # page background
+  surface: "#141b30"     # cards / panels
+  surface-2: "#1d2742"   # raised elements, table stripes
+  border: "#2a3557"      # hairlines
+  text: "#e8ecf8"        # main text
+  muted: "#9aa7c7"       # secondary text
+  primary: "#5aa9ff"     # brand primary (links, active controls)
+  primary-contrast: "#06121f"
+  accent: "#ffb454"      # highlights (events, pinned traces)
+  accent-2: "#7ee0a3"    # success / secondary highlight
+  warn: "#ff7b72"        # warnings, synthetic-data banner
+  plot-bg: "#0e1428"     # plot paper background
+
+footer_note: >
+  bib is an independent interface to the publicly released BPASS data products.
+  BPASS data are licensed CC BY-NC 4.0 by the BPASS team (J.J. Eldridge & E.R. Stanway).
