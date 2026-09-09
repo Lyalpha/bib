@@ -1,0 +1,155 @@
+# ---------------------------------------------------------------------------
+# bib golden-subset manifest.
+#
+# Defines exactly which BPASS data products `bib ingest` loads. Edit freely or
+# pass your own file with --manifest. Selection values for stellar models are
+# matched against filename parameters within a small tolerance; empty
+# selections produce warnings, not errors, so this manifest works even if a
+# particular grid point is absent from your download.
+# ---------------------------------------------------------------------------
+
+releases:
+  "2.2.1":
+    name: "Tuatara"
+    url: "https://bpass.auckland.ac.nz"
+    citation: >-
+      Eldridge, Stanway et al. (2017), PASA 34, e058;
+      Stanway & Eldridge (2018), MNRAS 479, 75.
+    notes: "Primary BPASS release for population synthesis and stellar model outputs."
+  "2.3":
+    name: "v2.3 (alpha-element variations)"
+    url: "https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/bpassv2p3/"
+    citation: >-
+      Byrne et al. (2022), MNRAS 512, 5329; Stanway & Eldridge (2018), MNRAS 479, 75.
+    notes: >-
+      Limited spectral-synthesis release built on the v2.2 population synthesis,
+      substituting C3K atmospheres so alpha/Fe can vary at fixed total Z.
+
+populations:
+  # Fiducial IMF, single + binary, every metallicity: the workhorse grid.
+  - release: "2.2.1"
+    imf: imf135_300
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio]
+
+  # IMF comparison pair at two metallicities (binary populations).
+  - release: "2.2.1"
+    imf: imf_chab300
+    pop_types: [bin]
+    metallicities: [z002, z020]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio]
+  - release: "2.2.1"
+    imf: imf100_300
+    pop_types: [bin]
+    metallicities: [z002, z020]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio]
+
+  # v2.3 alpha-enhancement grids (fiducial IMF, binary populations).
+  - release: "2.3"
+    imf: imf135_300
+    pop_types: [bin]
+    metallicities: [z002, z020]
+    alphas: [a-02, a+00, a+02, a+04, a+06]
+    products: [spectra, colours, ionizing]
+
+# HR-diagram isocontour files (population-density backdrops).
+# TL = log Teff vs log L; TG and TTG grids exist too but are not loaded by default.
+hrs:
+  - release: "2.2.1"
+    imf: imf135_300
+    pop_types: [bin]
+    metallicities: [z002, z020]
+    diagrams: [TL]
+
+# Curated individual stellar models. Sources searched: unpacked directories
+# containing sneplot files, then NEWSINMODS.tar / NEWBINMODS.<z>.tar archives.
+models:
+  # --- solar metallicity -----------------------------------------------------
+  - z: z020
+    kind: single
+    select: { m1: [1, 3, 8, 15, 30, 60] }
+    curated: true
+    title: "Single stars, Z=0.020"
+    description: >-
+      A ladder of single-star masses at solar metallicity: from a Sun-like star
+      through intermediate masses to massive stars with strong winds.
+
+  - z: z020
+    kind: primary
+    select: { m1: [15], q: [0.6], logp: [0.6] }
+    curated: true
+    title: "15 Msun close binary (q=0.6, logP=0.6)"
+    description: >-
+      Interacting binary: the primary loses its envelope through Roche-lobe
+      overflow, leaving a hot stripped helium star.
+
+  - z: z020
+    kind: primary
+    select: { m1: [15], q: [0.6], logp: [3.0] }
+    curated: true
+    title: "15 Msun wide binary (q=0.6, logP=3.0)"
+    description: >-
+      Same masses as the close system but in a wide orbit: the stars barely
+      interact, evolving almost as single stars. Compare with the close case.
+
+  - z: z020
+    kind: primary
+    select: { m1: [8], q: [0.9], logp: [1.0] }
+    curated: true
+    title: "8 Msun near-twin binary (q=0.9, logP=1.0)"
+    description: >-
+      Near-equal masses: mass transfer rejuvenates the companion, illustrating
+      how binaries make populations look younger and bluer.
+
+  - z: z020
+    kind: primary
+    select: { m1: [30], q: [0.4], logp: [1.4] }
+    curated: true
+    title: "30 Msun binary with unequal masses (q=0.4, logP=1.4)"
+    description: >-
+      A massive primary with a much lighter companion — a candidate for
+      common-envelope evolution as the primary swells.
+
+  - z: z020
+    kind: primary
+    select: { m1: [5], q: [0.5], logp: [0.4] }
+    curated: true
+    title: "5 Msun compact binary (q=0.5, logP=0.4)"
+    description: >-
+      Intermediate-mass close binary: strong interaction on the giant branch.
+
+  - z: z020
+    kind: secondary
+    select: { m1_range: [5, 20] }
+    limit: 4
+    curated: true
+    title: "Secondary models, Z=0.020"
+    description: >-
+      Evolution of the initially less massive star after its companion has
+      died, orbiting the remnant left behind.
+
+  # --- low metallicity (Z=0.002) ---------------------------------------------
+  - z: z002
+    kind: single
+    select: { m1: [1, 15, 60] }
+    curated: true
+    title: "Single stars, Z=0.002"
+    description: >-
+      Metal-poor counterparts: hotter, more compact, with weaker winds.
+
+  - z: z002
+    kind: primary
+    select: { m1: [15], q: [0.6], logp: [0.6] }
+    curated: true
+    title: "15 Msun close binary, Z=0.002"
+    description: >-
+      The stripped-star channel at low metallicity, where weak winds make
+      binary stripping the dominant route to hot helium stars.
+
+  - z: z002
+    kind: secondary
+    select: { m1_range: [5, 20] }
+    limit: 2
+    curated: true
+    title: "Secondary models, Z=0.002"
