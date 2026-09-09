@@ -1,14 +1,14 @@
 """initial schema
 
 Revision ID: 7751d6e64a35
-Revises: 
+Revises:
 Create Date: 2026-09-09 19:10:46.831423
 
 """
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = '7751d6e64a35'

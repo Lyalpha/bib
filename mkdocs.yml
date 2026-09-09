@@ -1,0 +1,48 @@
+site_name: bib — BPASS-in-Browser
+site_description: >
+  A pedagogical web interface for exploring BPASS stellar population
+  synthesis results.
+repo_name: bib
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: blue
+    accent: amber
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+
+nav:
+  - Home: index.md
+  - User guide: user-guide.md
+  - Science notes: science-notes.md
+  - Ingesting BPASS data: ingestion.md
+  - REST API: api.md
+  - Branding & deployment: deployment.md
+  - Code reference: reference.md

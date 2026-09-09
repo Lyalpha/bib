@@ -7,7 +7,14 @@ from fastapi import APIRouter
 
 router = APIRouter(tags=["v1"])  # mounted under /api/v1 by the app factory
 
-from bib.api.v1 import endpoints, filters, meta, photometry, populations, stellar_models  # noqa: E402
+from bib.api.v1 import (  # noqa: E402
+    endpoints,
+    filters,
+    meta,
+    photometry,
+    populations,
+    stellar_models,
+)
 
 router.include_router(endpoints.router)
 router.include_router(meta.router)

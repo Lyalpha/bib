@@ -92,10 +92,8 @@ def make_selector(
             return False
         if not close_to_any(name.logp, logp):
             return False
-        if m1_range is not None and (
-            name.m1 is None or not (m1_range[0] <= name.m1 <= m1_range[1])
-        ):
-            return False
-        return True
+        return m1_range is None or (
+            name.m1 is not None and m1_range[0] <= name.m1 <= m1_range[1]
+        )
 
     return select

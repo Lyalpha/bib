@@ -48,7 +48,7 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
-    type_annotation_map = {
+    type_annotation_map = {  # noqa: RUF012 — SQLAlchemy class-level configuration
         float: Float(53),  # double precision
         dict[str, Any]: JSONB,
     }
@@ -152,7 +152,7 @@ class AgeRowMixin:
     """
 
     @declared_attr
-    def population_id(cls) -> Mapped[int]:  # noqa: N805
+    def population_id(cls) -> Mapped[int]:
         return mapped_column(
             ForeignKey("population.id", ondelete="CASCADE"),
             primary_key=True,

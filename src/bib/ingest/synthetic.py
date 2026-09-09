@@ -209,7 +209,7 @@ def _splat(grid: np.ndarray, log_t: float, log_l: float, weight: float, sigma: f
     """Add a gaussian blob to a (logT-row, logL-col) occupation grid."""
     row = (log_t - 0.1) / 0.1
     col = (log_l + 2.9) / 0.1
-    r0, c0 = int(round(row)), int(round(col))
+    r0, c0 = round(row), round(col)
     size = 4
     for r in range(max(0, r0 - size), min(100, r0 + size + 1)):
         for c in range(max(0, c0 - size), min(100, c0 + size + 1)):
