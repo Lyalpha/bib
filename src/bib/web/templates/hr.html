@@ -1,2 +1,101 @@
 {% extends "base.html" %}
-{% block content %}<h1>hr</h1><p class="muted">Under construction.</p>{% endblock %}
+{% block title %}HR Explorer{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="row between" style="margin-bottom: 0.6rem;">
+  <h1 style="margin:0;">HR Explorer</h1>
+  <div class="muted small">Watch individual stellar models evolve across the Hertzsprung–Russell diagram</div>
+</div>
+
+<div id="error-box" class="synthetic-banner" style="border-radius:10px;" hidden></div>
+
+<div class="explorer">
+  <aside class="controls card tight">
+    <div class="control-group">
+      <label>Metallicity</label>
+      <select id="sel-z"></select>
+    </div>
+    <div class="control-group">
+      <label>Model type</label>
+      <select id="sel-kind">
+        <option value="">All</option>
+        <option value="single">Single stars</option>
+        <option value="primary">Binary primaries</option>
+        <option value="secondary">Secondaries (+ remnant)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Stellar model</label>
+      <select id="sel-model" size="8" style="height:auto;"></select>
+    </div>
+    <div class="card tight" id="model-info" style="background:var(--brand-surface-2);">
+      <div class="small muted">Pick a model to see its story.</div>
+    </div>
+
+    <hr style="margin:0.4rem 0;">
+
+    <div class="control-group">
+      <label class="row" style="text-transform:none; letter-spacing:0;">
+        <input type="checkbox" id="chk-backdrop" checked style="width:auto;">
+        <span>Population backdrop (HRD density)</span>
+      </label>
+    </div>
+    <div class="control-group">
+      <label>Orbit display speed</label>
+      <div class="control-inline">
+        <input type="range" id="sl-orbit" min="-1" max="3" step="0.25" value="0.5">
+        <output id="out-orbit">1.4×</output>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="row" style="text-transform:none; letter-spacing:0;">
+        <input type="checkbox" id="chk-truescale" style="width:auto;">
+        <span>Strict true scale <span class="muted small">(stars may become tiny)</span></span>
+      </label>
+    </div>
+    <details class="help">
+      <summary>How playback works</summary>
+      <p class="small">Playback follows the model's own timesteps, so it naturally slows down
+      where evolution is rapid and interesting. The readout shows the true stellar age.
+      Values between timesteps are interpolated for smooth animation.</p>
+    </details>
+  </aside>
+
+  <section style="display:flex; flex-direction:column; gap:0.8rem; min-width:0;">
+    <div class="playback" id="hr-playbar">
+      <button class="icon-btn" data-role="rewind" title="Back to ZAMS">⏮</button>
+      <button class="icon-btn primary" data-role="play" title="Play">▶</button>
+      <input type="range" class="scrub" data-role="scrub" min="0" max="1000" value="0">
+      <span class="readout" data-role="readout"></span>
+      <label class="small muted">speed</label>
+      <input type="range" class="speed" data-role="speed" min="-2" max="3" step="0.25" value="0">
+      <span class="small" data-role="speed-out">1×</span>
+    </div>
+
+    <div class="grid" style="grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap:0.8rem;">
+      <div class="card tight">
+        <div id="hr-plot" class="plot-host" style="min-height:460px;"></div>
+      </div>
+      <div class="card tight" style="display:flex; flex-direction:column;">
+        <canvas id="binary-canvas" style="width:100%; flex:1; min-height:380px;"></canvas>
+        <div class="plot-note" id="viz-caption">—</div>
+      </div>
+    </div>
+
+    <div class="card tight">
+      <div class="readout-grid" id="readout"></div>
+    </div>
+
+    <div class="card tight">
+      <h3 style="margin:0.2em 0 0.5em;">Evolutionary events <span class="muted small">(click to jump)</span></h3>
+      <div class="chips" id="event-chips"></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/vendor/plotly-4.1.0.min.js"></script>
+<script type="module" src="/static/js/hr.js"></script>
+{% endblock %}
