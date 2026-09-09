@@ -1,2 +1,65 @@
 {% extends "base.html" %}
-{% block content %}<h1>about</h1><p class="muted">Under construction.</p>{% endblock %}
+{% block title %}About{% endblock %}
+{% block content %}
+<div class="prose">
+
+<h1>About {{ branding.site_name }}</h1>
+<p>
+  <strong>{{ branding.full_name }}</strong> <span class="badge">v{{ version }}</span> is a
+  pedagogy-first web interface to the publicly released
+  <a href="https://bpass.auckland.ac.nz" target="_blank" rel="noopener">BPASS</a> stellar
+  population synthesis data products. It exists so that students, teachers and researchers can
+  explore what stellar populations and binary stars do — interactively, in a browser — without
+  first writing file parsers. Numbers shown are computed directly from ingested BPASS release
+  files with full provenance; anything added for visual smoothness (interpolated animation
+  frames, the demo dataset) is labelled as such.
+</p>
+
+<h2>Credit where it is due</h2>
+<p>
+  BPASS is the work of <strong>J.&thinsp;J. Eldridge</strong> (University of Auckland),
+  <strong>E.&thinsp;R. Stanway</strong> (University of Warwick) and collaborators, who develop
+  the models and release the data on a best-effort basis under CC&nbsp;BY-NC&nbsp;4.0.
+  {{ branding.site_name }} is an <em>independent</em> interface: it is not an official BPASS
+  product, and any bugs here are ours, not the BPASS team's. For science-grade use, always
+  consult the <a href="/tutorial">manuals and release papers</a>.
+</p>
+
+<h2 id="acknowledgement">Acknowledgement &amp; citations</h2>
+<p>
+  Using results or figures from this tool in a paper, talk or teaching material? Please
+  include the BPASS acknowledgement and citations below — it is the one thing the BPASS team
+  asks in return for a decade of freely released models.
+</p>
+{% include "_acknowledgement.html" %}
+
+<h2>Licences</h2>
+<ul>
+  <li><strong>BPASS data products</strong>:
+      <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>
+      — attribution required, non-commercial use only. This tool does not redistribute the
+      release files; you ingest your own copy.</li>
+  <li><strong>{{ branding.site_name }} source code</strong>: MIT licence.</li>
+  <li><strong>Bundled filter curves</strong>: retrieved from the
+      <a href="http://svo2.cab.inta-csic.es/theory/fps/" target="_blank" rel="noopener">Spanish
+      Virtual Observatory Filter Profile Service</a> — please cite Rodrigo, Solano &amp; Bayo
+      (2012) and Rodrigo &amp; Solano (2020) if the filter set matters to your work.</li>
+</ul>
+
+<h2>Built with</h2>
+<p class="small muted">
+  FastAPI, SQLAlchemy and PostgreSQL on the back end; Plotly.js, htmx and Alpine.js
+  (all vendored, no CDN) on the front end; numpy and astropy for the science core, with dust
+  laws via the <code>dust_extinction</code> package (Gordon 2024) plus an inline
+  Calzetti&nbsp;(2000) implementation; packaged with uv; runs in Podman or Docker, or bare.
+  Colour branding is configurable per deployment via <code>branding.yaml</code>.
+</p>
+
+<h2>Feedback</h2>
+<p class="small muted">
+  Found a bug, a confusing label, or a number you don't believe? Please open an issue on the
+  project repository — scientific-correctness reports are especially welcome.
+</p>
+
+</div>
+{% endblock %}

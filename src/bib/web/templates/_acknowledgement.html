@@ -1,0 +1,63 @@
+{# Copyable BPASS acknowledgement boxes + citation list. Included on / and /about. #}
+<div class="grid cols-2">
+  <div class="ack-box">
+    <button class="copy-btn small" data-copy="ack-v22-text" title="Copy to clipboard">Copy</button>
+    <div class="small muted" style="margin-bottom: 0.3rem;">If you used v2.2.1 products</div>
+    <p id="ack-v22-text" style="margin: 0;">This work made use of v2.2.1 of the Binary Population and
+    Spectral Synthesis (BPASS) models as described in Eldridge, Stanway et al. (2017) and
+    Stanway &amp; Eldridge et al. (2018).</p>
+  </div>
+  <div class="ack-box">
+    <button class="copy-btn small" data-copy="ack-v23-text" title="Copy to clipboard">Copy</button>
+    <div class="small muted" style="margin-bottom: 0.3rem;">If you used v2.3 (alpha-enhanced) products</div>
+    <p id="ack-v23-text" style="margin: 0;">This work made use of v2.3 of the Binary Population and
+    Spectral Synthesis (BPASS) models as described in Byrne et al. (2022) and
+    Stanway &amp; Eldridge (2018).</p>
+  </div>
+</div>
+
+<h3>Papers to cite</h3>
+<ul class="cites">
+  <li>Eldridge, Stanway et al. (2017), <em>Binary Population and Spectral Synthesis Version 2.0</em>,
+      PASA, 34, e058 —
+      <a href="https://ui.adsabs.harvard.edu/abs/2017PASA...34...58E" target="_blank" rel="noopener">ADS</a> ·
+      <a href="https://doi.org/10.1017/pasa.2017.51" target="_blank" rel="noopener">DOI</a></li>
+  <li>Stanway &amp; Eldridge (2018), <em>Re-evaluating old stellar populations</em>,
+      MNRAS, 479, 75 —
+      <a href="https://ui.adsabs.harvard.edu/abs/2018MNRAS.479...75S" target="_blank" rel="noopener">ADS</a> ·
+      <a href="https://doi.org/10.1093/mnras/sty1353" target="_blank" rel="noopener">DOI</a></li>
+  <li>Byrne et al. (2022), <em>Dependence of stellar population spectra on
+      &alpha;-element enhancement</em> (v2.3), MNRAS, 512, 5329 —
+      <a href="https://ui.adsabs.harvard.edu/abs/2022MNRAS.512.5329B" target="_blank" rel="noopener">ADS</a> ·
+      <a href="https://doi.org/10.1093/mnras/stac807" target="_blank" rel="noopener">DOI</a></li>
+</ul>
+
+<script>
+  if (!window.__ackCopyWired) {
+    window.__ackCopyWired = true;
+    document.addEventListener("click", async (ev) => {
+      const btn = ev.target.closest("[data-copy]");
+      if (!btn) return;
+      const el = document.getElementById(btn.dataset.copy);
+      const text = el.textContent.replace(/\s+/g, " ").trim();
+      let ok = false;
+      try {
+        await navigator.clipboard.writeText(text); // needs a secure context + focus
+        ok = true;
+      } catch {
+        // Fallback for plain-http deployments and older browsers.
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand("copy");
+        ta.remove();
+      }
+      btn.textContent = ok ? "Copied!" : "Select & copy manually";
+      if (ok) btn.classList.add("copied");
+      setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 1600);
+    });
+  }
+</script>

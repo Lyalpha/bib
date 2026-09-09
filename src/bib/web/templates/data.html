@@ -1,2 +1,179 @@
 {% extends "base.html" %}
-{% block content %}<h1>data</h1><p class="muted">Under construction.</p>{% endblock %}
+{% block title %}Data &amp; API{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>Data &amp; API</h1>
+<p class="muted">What this instance has loaded, where to get the real thing, and how to script against it.</p>
+</div>
+
+<h2>Loaded right now</h2>
+<div id="loaded-summary" class="row" style="margin-bottom: 0.8rem;"></div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Populations</h3>
+    <div class="table-wrap">
+      <table class="data" id="pop-table">
+        <thead><tr>
+          <th>Release</th><th>IMF</th><th>Z</th><th>Type</th><th>&alpha;-mix</th><th>Products</th><th></th>
+        </tr></thead>
+        <tbody><tr><td colspan="7" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Stellar models</h3>
+    <div class="table-wrap">
+      <table class="data" id="model-table">
+        <thead><tr>
+          <th>Model</th><th>Z</th><th>Kind</th><th>M<sub>1</sub></th><th>q</th><th>log&thinsp;P</th><th>Steps</th><th></th>
+        </tr></thead>
+        <tbody><tr><td colspan="8" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<p class="small muted">
+  Every ingested item carries provenance (source filename + SHA-256) — query
+  <code>/api/v1/populations/{id}</code> or <code>/api/v1/models/{id}</code> to see it.
+  Rows marked <span class="badge warn">demo</span> are synthetic toy data, not BPASS output.
+</p>
+
+<div class="prose">
+<h2>Get the real BPASS data</h2>
+<p>
+  BPASS releases are hosted by the team — this tool never redistributes them. The full
+  releases are large (hundreds of GB with individual stellar models); the ingest manifest
+  below tells you exactly which files you need.
+</p>
+<ul>
+  <li><a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/"
+      target="_blank" rel="noopener">BPASS v2.2.1 release page</a> — population synthesis +
+      stellar models (the primary release), with links to the hosted archives.</li>
+  <li><a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/bpassv2p3/"
+      target="_blank" rel="noopener">BPASS v2.3 release page</a> — alpha-enhanced spectral
+      synthesis extension.</li>
+  <li><a href="https://bpass.auckland.ac.nz" target="_blank" rel="noopener">bpass.auckland.ac.nz</a>
+      — project home, announcements, alternative hosting.</li>
+  <li>User manuals:
+      <a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/bpassv2.2_manual-arial.pdf"
+      target="_blank" rel="noopener">v2.2</a> ·
+      <a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/bpassv2p3/bpassv2.3_manual.pdf"
+      target="_blank" rel="noopener">v2.3</a> (OpenDyslexic versions on the <a href="/tutorial">tutorial</a> page).</li>
+</ul>
+
+<h2>Ingest your download</h2>
+<p>
+  Point the CLI at a directory containing BPASS release files (tarballs may stay packed —
+  curated stellar models are extracted member-by-member):
+</p>
+<pre><code># create / upgrade the schema and load the bundled filter curves
+bib init-db
+
+# instant sandbox without any downloads (adds the warning banner)
+bib demo-seed
+
+# ingest the golden subset from your BPASS download
+bib ingest --source /path/to/bpass_downloads
+
+# or drive it with your own manifest of populations/models
+bib ingest --source /path/to/bpass_downloads --manifest my_subset.yaml
+
+# what ended up in the database?
+bib info</code></pre>
+<p class="small muted">
+  The bundled manifest (<code>src/bib/ingest/golden.yaml</code>) defines the curated "golden
+  subset": all 13 metallicities of the default IMF, IMF variants at two metallicities, the
+  v2.3 alpha grids, HRD isocontours, and ~30 hand-picked stellar models. Copy and edit it to
+  load more. Re-runs are idempotent; use <code>--replace</code> to force re-ingestion.
+  Real data replaces the demo banner automatically once synthetic rows are removed.
+</p>
+
+<h2 id="api">The API</h2>
+<p>
+  Everything the UI displays comes from <code>/api/v1</code> — browse the interactive
+  <a href="/api/docs">OpenAPI docs</a>. A taste:
+</p>
+<pre><code># what's loaded, and every selector option
+curl -s localhost:8000/api/v1/meta
+
+# all binary populations at a tenth solar metallicity
+curl -s "localhost:8000/api/v1/populations?pop_type=bin&amp;z_label=z002"
+
+# one SED: population 1 at 1 Gyr (age index 30), SMC dust, E(B-V)=0.1
+curl -s "localhost:8000/api/v1/populations/1/sed?age_index=30&amp;dust_law=smc&amp;ebv=0.1"
+
+# ...or as CSV at full native resolution
+curl -s "localhost:8000/api/v1/populations/1/sed?age_index=30&amp;format=csv" -o sed.csv
+
+# AB magnitudes through bundled filters
+curl -s "localhost:8000/api/v1/photometry?population_id=1&amp;age_index=30&amp;filters=sdss.g,sdss.r"
+
+# stellar-model search (the future query-builder speaks this dialect)
+curl -s "localhost:8000/api/v1/models?kind=primary&amp;m1_min=10&amp;m1_max=20"</code></pre>
+<p class="small muted">
+  Numbers in JSON responses are rounded to display precision; request CSV for full-precision
+  spectra. The generic query builder ("all binaries with final mass 2–4 M<sub>☉</sub> and
+  log&thinsp;P &lt; 1") will grow on top of these endpoints.
+</p>
+
+<h2>Licence</h2>
+<p class="small muted">
+  BPASS data: <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank"
+  rel="noopener">CC BY-NC 4.0</a>, © the BPASS team. This interface: MIT. Bundled filter
+  transmission curves come from the
+  <a href="http://svo2.cab.inta-csic.es/theory/fps/" target="_blank" rel="noopener">SVO Filter
+  Profile Service</a> (see <a href="/about">About</a> for citations).
+</p>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+import { apiGet } from "/static/js/api.js";
+(async () => {
+  const summary = document.getElementById("loaded-summary");
+  const popBody = document.querySelector("#pop-table tbody");
+  const modelBody = document.querySelector("#model-table tbody");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const demoBadge = '<span class="badge warn">demo</span>';
+  try {
+    const [meta, pops, models] = await Promise.all([
+      apiGet("/meta"),
+      apiGet("/populations"),
+      apiGet("/models", { limit: 1000 }),
+    ]);
+
+    summary.innerHTML = meta.releases
+      .map((r) => `<span class="badge ok">${esc(r.version)} · ${r.n_populations} populations</span>`)
+      .join(" ") + ` <span class="badge">${meta.n_stellar_models} stellar models</span>`
+      + (meta.has_synthetic ? ` <span class="badge warn">includes synthetic demo data</span>` : "");
+
+    popBody.innerHTML = pops.length
+      ? pops.map((p) => `<tr>
+          <td>${esc(p.release)}</td><td>${esc(p.imf)}</td>
+          <td title="Z = ${p.z_value}">${esc(p.z_label)}</td>
+          <td>${p.pop_type === "bin" ? "binary" : "single"}</td>
+          <td>${p.alpha_label ? esc(p.alpha_label) : "—"}</td>
+          <td class="small muted">${(p.products || []).map(esc).join(", ") || "—"}</td>
+          <td>${p.is_synthetic ? demoBadge : ""}</td>
+        </tr>`).join("")
+      : '<tr><td colspan="7" class="muted">Nothing loaded — run <code>bib demo-seed</code> or <code>bib ingest</code>.</td></tr>';
+
+    modelBody.innerHTML = models.length
+      ? models.map((mm) => `<tr>
+          <td>${esc(mm.title || mm.filename || ("model " + mm.id))}</td>
+          <td>${esc(mm.z_label)}</td><td>${esc(mm.kind)}</td>
+          <td>${mm.m1_init ?? "—"}</td><td>${mm.q_init ?? "—"}</td>
+          <td>${mm.logp_init ?? "—"}</td><td>${mm.n_steps}</td>
+          <td>${mm.is_synthetic ? demoBadge : ""}</td>
+        </tr>`).join("")
+      : '<tr><td colspan="8" class="muted">No stellar models loaded.</td></tr>';
+  } catch (err) {
+    summary.innerHTML = '<span class="badge warn">database unavailable</span>';
+    popBody.innerHTML = modelBody.innerHTML =
+      '<tr><td colspan="8" class="muted">Could not reach the API.</td></tr>';
+  }
+})();
+</script>
+{% endblock %}

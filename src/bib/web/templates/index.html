@@ -1,8 +1,89 @@
 {% extends "base.html" %}
+{% block title %}Home{% endblock %}
 {% block content %}
+
 <div class="hero">
   <h1>{{ branding.full_name }}</h1>
   <p class="tagline">{{ branding.tagline }}</p>
-  <p class="muted">Scaffold build — full landing page arrives with the content phase.</p>
+  <p>
+    <strong>{{ branding.site_name }}</strong> is a point-and-click window onto the
+    <a href="https://bpass.auckland.ac.nz" target="_blank" rel="noopener">BPASS</a> stellar population
+    synthesis models: watch the spectrum of a stellar population evolve over ten billion years,
+    convert it to magnitudes in any filter, and follow individual stars — single and binary —
+    across the Hertzsprung–Russell diagram as they swell, strip and merge.
+    No downloads to parse, no code to write.
+  </p>
+  <div class="cta-row">
+    <a class="btn primary" href="/sed">Open the SED Explorer</a>
+    <a class="btn" href="/hr">Open the HR Explorer</a>
+    <a class="btn ghost" href="/tutorial">New to BPASS? Start here</a>
+  </div>
+  <p>
+    <span class="badge ok">BPASS v2.2.1</span>
+    <span class="badge ok">v2.3 alpha-enhanced grid</span>
+    <span class="badge">data licence CC BY-NC 4.0</span>
+  </p>
 </div>
+
+<h2>What is BPASS?</h2>
+<p class="prose">
+  The <strong>Binary Population and Spectral Synthesis</strong> code, by J.&thinsp;J. Eldridge
+  (University of Auckland) and E.&thinsp;R. Stanway (University of Warwick), predicts what
+  populations of stars look like as they age — their spectra, colours, ionizing output,
+  supernova rates and chemical yields. Its defining feature is that it follows
+  <em>binary</em> stellar evolution in detail: most massive stars have a companion close
+  enough to interact, and those interactions reshape a population's light in ways
+  single-star models miss. See the <a href="/tutorial">tutorial</a> for a gentle introduction,
+  or go straight to the official
+  <a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/bpassv2.2_manual-arial.pdf"
+     target="_blank" rel="noopener">v2.2 user manual</a>.
+</p>
+
+<div class="grid cols-2" style="margin-top: 1.2rem;">
+  <a class="card feature-card" href="/sed">
+    <div class="icon">🌈</div>
+    <h3>SED Explorer</h3>
+    <p class="muted">Plot any simple stellar population at 51 ages from 1&nbsp;Myr to 100&nbsp;Gyr.
+    Press play and watch it evolve. Pin snapshots to compare IMFs, metallicities,
+    alpha enhancement and dust reddening side by side.</p>
+  </a>
+  <a class="card feature-card" href="/hr">
+    <div class="icon">✨</div>
+    <h3>HR Explorer</h3>
+    <p class="muted">Animate individual stellar models across the HR diagram with a live
+    readout of mass, radius and surface composition. A to-scale binary visualizer shows
+    orbits, winds, Roche-lobe overflow and common-envelope events as they happen.</p>
+  </a>
+  <a class="card feature-card" href="/sed#photometry">
+    <div class="icon">📐</div>
+    <h3>Synthetic photometry</h3>
+    <p class="muted">AB magnitudes through bundled filter sets (SDSS, 2MASS, GALEX, LSST,
+    HST, JWST, Gaia…) — or upload your own transmission curve and get magnitudes for it.</p>
+  </a>
+  <a class="card feature-card" href="/data#api">
+    <div class="icon">🔌</div>
+    <h3>REST API</h3>
+    <p class="muted">Everything the interface shows is served as JSON from
+    <code>/api/v1</code> with interactive OpenAPI docs — the seed of a future generic
+    query builder for scripted access.</p>
+  </a>
+</div>
+
+<h2 id="acknowledgement">Acknowledging BPASS</h2>
+<p class="prose">
+  BPASS is developed and released on a best-effort basis by a small team. If anything you
+  produce with this tool ends up in a paper, talk or classroom, please include the official
+  acknowledgement and cite the release papers:
+</p>
+{% include "_acknowledgement.html" %}
+
+<h2>Licence</h2>
+<p class="prose">
+  BPASS data products are released by the BPASS team under
+  <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC&nbsp;BY-NC&nbsp;4.0</a>
+  (attribution, non-commercial). {{ branding.site_name }} itself is open source under the MIT
+  licence and is an independent interface, not an official BPASS product — see
+  <a href="/about">About</a> for credits and details.
+</p>
+
 {% endblock %}
