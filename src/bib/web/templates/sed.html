@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}SED Explorer{% endblock %}
+{% block title %}SSP Explorer{% endblock %}
 {% block main_class %}wide{% endblock %}
 
 {% block content %}
 <div class="row between" style="margin-bottom: 0.6rem;">
-  <h1 style="margin:0;">SED Explorer</h1>
-  <div class="muted small">Spectra are for 10<sup>6</sup> M<sub>☉</sub> formed unless rescaled · absolute AB magnitudes at 10 pc</div>
+  <h1 style="margin:0;">SSP Explorer</h1>
+  <div class="muted small" id="frame-note">Quantities are for 10<sup>6</sup> M<sub>☉</sub> formed unless rescaled · D<sub>L</sub> = 10 pc · absolute AB magnitudes</div>
 </div>
 
 <div id="error-box" class="synthetic-banner" style="border-radius:10px;" hidden></div>
@@ -41,14 +41,14 @@
     <div class="control-group">
       <label>log<sub>10</sub>(age / yr) <span class="muted" id="age-note"></span></label>
       <div class="control-inline">
-        <input type="range" id="sl-age" min="0" max="50" step="0.1" value="20">
+        <input type="range" id="sl-age" min="0" max="50" step="0.1" value="20" style="--fill: 40%">
         <output id="out-age">8.0</output>
       </div>
     </div>
     <div class="control-group">
       <label>Formed mass (M<sub>☉</sub>)</label>
       <div class="control-inline">
-        <input type="range" id="sl-mass" min="3" max="9" step="0.1" value="6">
+        <input type="range" id="sl-mass" min="5" max="10" step="0.1" value="6" style="--fill: 20%">
         <output id="out-mass">10⁶</output>
       </div>
     </div>
@@ -62,14 +62,14 @@
     <div class="control-group" id="grp-ebv" hidden>
       <label>E(B−V)</label>
       <div class="control-inline">
-        <input type="range" id="sl-ebv" min="0" max="2" step="0.02" value="0">
+        <input type="range" id="sl-ebv" min="0" max="2" step="0.02" value="0" style="--fill: 0%">
         <output id="out-ebv">0.00</output>
       </div>
     </div>
     <div class="control-group" id="grp-rv" hidden>
       <label>R<sub>V</sub></label>
       <div class="control-inline">
-        <input type="range" id="sl-rv" min="2" max="6" step="0.1" value="3.1">
+        <input type="range" id="sl-rv" min="2" max="6" step="0.1" value="3.1" style="--fill: 27.5%">
         <output id="out-rv">3.1</output>
       </div>
     </div>
@@ -77,20 +77,50 @@
     <hr style="margin:0.4rem 0;">
 
     <div class="control-group">
-      <label>Filter overlay</label>
-      <select id="sel-filtergroup">
-        <option value="">None</option>
-      </select>
+      <label>Redshift <span class="muted" id="cosmo-note" title="flat ΛCDM, H₀=70 km/s/Mpc, Ωm=0.3">z</span></label>
+      <div class="control-inline">
+        <input type="range" id="sl-redshift" min="0" max="10" step="0.05" value="0" style="--fill: 0%">
+        <output id="out-redshift">0.00</output>
+      </div>
+      <span class="small muted" id="dl-note">D<sub>L</sub> = 10 pc · absolute mags</span>
+      <label class="row" style="text-transform:none; letter-spacing:0; margin-top:0.45rem;" title="Vacuum rest wavelengths × (1+z)">
+        <input type="checkbox" id="chk-lyman" style="width:auto;">
+        <span>Show Lyman series</span>
+      </label>
+      <label class="row" style="text-transform:none; letter-spacing:0;" title="Vacuum rest wavelengths × (1+z)">
+        <input type="checkbox" id="chk-balmer" style="width:auto;">
+        <span>Show Balmer series</span>
+      </label>
+    </div>
+
+    <div class="control-group">
+      <label>Visible plots</label>
+      <label class="plot-toggle"><input type="checkbox" data-panel="sed" checked> Spectral energy distribution</label>
+      <label class="plot-toggle"><input type="checkbox" data-panel="counts" checked> Star counts</label>
+      <label class="plot-toggle"><input type="checkbox" data-panel="ionizing" checked> Ionizing photons</label>
+      <label class="plot-toggle"><input type="checkbox" data-panel="sn" checked> Supernova rates</label>
+      <label class="plot-toggle"><input type="checkbox" data-panel="mass"> Surviving mass</label>
+      <label class="plot-toggle"><input type="checkbox" data-panel="yields"> Chemical yields</label>
     </div>
 
     <div class="row">
-      <button class="primary" id="btn-pin" title="Keep the current spectrum on the plot while you change parameters">📌 Pin spectrum</button>
+      <button class="primary" id="btn-pin" title="Keep this SSP on every visible plot while you change parameters">📌 Pin SSP</button>
     </div>
     <details class="help">
       <summary>What am I looking at?</summary>
-      <p class="small">The spectral energy distribution of a simple stellar population: all stars
-      born in one instantaneous burst, shown at the selected age. Pin a spectrum, then change
-      parameters to compare populations. Press play to watch the population age.</p>
+      <p class="small">A simple stellar population: all stars born in one instantaneous burst.
+      Every plot shares the age slider and playbar. Click a timeseries plot to jump
+      every panel — including the SED — to that age. Pin an SSP to overlay it on all visible
+      plots, then change IMF, metallicity or binary/single to compare. With one or more
+      pins, <strong>sum visible spectra</strong> adds the live SSP to every pin at the
+      ages shown (the playhead if <strong>sync visible spectra ages</strong> is on).
+      That mix is not a star-formation history.
+      Photometry is the live SSP only, from the full-resolution spectrum at the nearest
+      grid age. Redshift shifts only the SED into the observer frame; ionizing photons,
+      star counts and rates stay rest-frame. Trail snapshots drop a faded SED every
+      0.5&nbsp;dex while playing, only when nothing is pinned.
+      Star counts use BPASS spectral-type assignments (Eldridge et al. 2017, table 3),
+      not a fit to the plotted SED.</p>
     </details>
   </aside>
 
@@ -98,42 +128,97 @@
     <div class="playback" id="sed-playbar">
       <button class="icon-btn" data-role="rewind" title="Back to the first age">⏮</button>
       <button class="icon-btn primary" data-role="play" title="Play">▶</button>
-      <input type="range" class="scrub" data-role="scrub" min="0" max="1000" value="400">
+      <input type="range" class="scrub" data-role="scrub" min="0" max="1000" value="400" style="--fill: 40%">
       <span class="readout" data-role="readout"></span>
       <label class="small muted">speed</label>
-      <input type="range" class="speed" data-role="speed" min="-2" max="3" step="0.25" value="0">
+      <input type="range" class="speed" data-role="speed" min="-2" max="3" step="0.25" value="0" style="--fill: 40%">
       <span class="small" data-role="speed-out">1×</span>
+      <label class="small" title="While playing, leave a snapshot every 0.5 dex of log-age. Same hue; older frames fade. Requires no pinned SSPs.">
+        <input type="checkbox" id="chk-trail" style="width:auto;"> trail snapshots
+      </label>
     </div>
 
-    <div class="card tight">
-      <div id="sed-plot" class="plot-host"></div>
+    <div class="chips" id="pin-row">
+      <label class="chip sync-chip" id="chip-sync" hidden title="Lock every visible SED to the playhead age. Redshift, dust and mass stay as they were when you pinned.">
+        <input type="checkbox" id="chk-sync"> 🔗 sync visible spectra ages
+      </label>
+      <label class="chip sync-chip" id="chip-sum" title="Pin an SSP to sum it with the live spectrum.">
+        <input type="checkbox" id="chk-sum"> Σ sum visible spectra
+      </label>
+      <span class="chips" id="pin-chips" style="display:contents;"></span>
+    </div>
+
+    <div class="card tight ssp-panel" id="panel-sed">
+      <h2 class="panel-title">Spectral energy distribution</h2>
+      <div class="sed-with-key">
+        <div id="sed-plot" class="plot-host"></div>
+        <aside class="ssp-color-key" id="ssp-color-key" aria-label="SSP colours"></aside>
+      </div>
       <div class="plot-note row between">
-        <span id="interp-note">Frames between grid ages are interpolated for display — photometry always uses true grid ages.</span>
-        <span class="row" style="gap:0.4rem;">
+        <span class="row" style="gap:0.8rem; flex-wrap:wrap;">
+          <span id="interp-note">Frames between grid ages are interpolated for display — photometry always uses true grid ages.</span>
+        </span>
+        <span class="row" style="gap:0.55rem; flex-wrap:wrap;">
+          <fieldset class="seg compact" id="seg-xunit" title="Spectral axis: wavelength or frequency">
+            <label><input type="radio" name="xunit" value="lambda" checked>λ</label>
+            <label><input type="radio" name="xunit" value="nu">ν</label>
+          </fieldset>
+          <label class="small" title="Logarithmic spectral axis"><input type="checkbox" id="chk-xlog" checked> log <span id="xlog-sym">λ</span></label>
+          <label class="small" title="Logarithmic flux axis"><input type="checkbox" id="chk-ylog" checked> log F</label>
           <button class="ghost small" id="btn-png">PNG</button>
-          <a class="btn ghost small" id="lnk-csv" download>CSV (native res)</a>
+          <a class="btn ghost small" id="lnk-csv" download>CSV</a>
           <a class="btn ghost small" id="lnk-json" target="_blank" rel="noopener">JSON</a>
         </span>
       </div>
     </div>
 
-    <div class="chips" id="pin-chips"></div>
-
-    <div class="card" id="photometry">
-      <div class="row between">
-        <h3 style="margin:0.2em 0;">Photometry <span class="muted small">(absolute AB, 10 pc)</span></h3>
-        <label class="btn small" title="Two columns: wavelength [Å], transmission">
+    <details class="card phot-panel" id="photometry" open>
+      <summary>
+        <h2 class="panel-title">Photometry</h2>
+        <span class="muted small" id="phot-frame">(absolute AB · D<sub>L</sub> = 10 pc)</span>
+        <label class="btn small" id="lbl-file-filter" title="Two columns: wavelength [Å], transmission">
           Upload custom filter <input type="file" id="file-filter" accept=".txt,.csv,.dat" hidden>
         </label>
-      </div>
+      </summary>
       <div style="max-height: 300px; overflow-y:auto;">
         <table class="data" id="phot-table">
-          <thead><tr><th>Filter</th><th>Group</th><th>λ<sub>eff</sub> (Å)</th><th>m<sub>AB</sub></th><th>coverage</th></tr></thead>
+          <thead><tr><th title="Tick to draw the passband and measured point on the plot">plot</th><th>Filter</th><th>Group</th><th>λ<sub>eff</sub> (Å)</th><th id="th-mag">M<sub>AB</sub></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
       <p class="plot-note">Computed from the full-resolution SED at the nearest grid age
-        (<span id="phot-age">—</span>). Filters with partial SED coverage are flagged.</p>
+        (<span id="phot-age">—</span>). Tick a filter to overlay its passband and the measured
+        magnitude as a point on the SED.
+        <span id="hidden-filters" hidden> <a href="#" id="lnk-partial"></a></span>
+      </p>
+    </details>
+
+    <div class="ssp-aux" id="ssp-aux">
+      <div class="card tight ssp-panel" id="panel-counts">
+        <h2 class="panel-title">Star counts</h2>
+        <p class="panel-sub">Expected number of each type at this age, IMF-weighted, scaled to formed mass.</p>
+        <div id="counts-plot" class="plot-host compact"></div>
+      </div>
+      <div class="card tight ssp-panel" id="panel-ionizing">
+        <h2 class="panel-title">Ionizing photons</h2>
+        <p class="panel-sub">Rest-frame ionizing photon rate. The right axis is the Case&nbsp;B Hα luminosity BPASS tabulates as log L(Hα) = log N<sub>ion</sub> − 11.87. Independent of the redshift slider.</p>
+        <div id="ionizing-plot" class="plot-host compact"></div>
+      </div>
+      <div class="card tight ssp-panel" id="panel-sn">
+        <h2 class="panel-title">Supernova rates</h2>
+        <p class="panel-sub">Counts in each age bin divided by the bin width. Core-collapse = IIP + II-other + Ib + Ic.</p>
+        <div id="sn-plot" class="plot-host compact"></div>
+      </div>
+      <div class="card tight ssp-panel" id="panel-mass" hidden>
+        <h2 class="panel-title">Surviving mass</h2>
+        <p class="panel-sub">Mass still in live stars, and in remnants (WD/NS/BH) where BPASS published it.</p>
+        <div id="mass-plot" class="plot-host compact"></div>
+      </div>
+      <div class="card tight ssp-panel" id="panel-yields" hidden>
+        <h2 class="panel-title">Chemical yields</h2>
+        <p class="panel-sub">Metal mass-loss rate in stellar winds versus supernova ejecta (M<sub>☉</sub>/yr).</p>
+        <div id="yields-plot" class="plot-host compact"></div>
+      </div>
     </div>
   </section>
 </div>
@@ -141,5 +226,5 @@
 
 {% block scripts %}
 <script src="/static/vendor/plotly-4.1.0.min.js"></script>
-<script type="module" src="/static/js/sed.js"></script>
+<script type="module" src="/static/js/sed.js?v=9"></script>
 {% endblock %}

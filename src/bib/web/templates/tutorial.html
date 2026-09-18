@@ -4,10 +4,6 @@
 <div class="prose">
 
 <h1>A short tour of BPASS (and of this tool)</h1>
-<p class="muted">
-  Ten minutes of background, then hands-on with both explorers. No prior knowledge of
-  population synthesis needed.
-</p>
 
 <h2>1 · What population synthesis does</h2>
 <p>
@@ -23,7 +19,7 @@
   The result for a single burst of star formation is a <strong>simple stellar population
   (SSP)</strong>: every star has the same age and initial composition, and only the stellar
   mass varies. SSPs are the LEGO bricks of galaxy modelling — any star-formation history can
-  be assembled from them. Everything in the <a href="/sed">SED Explorer</a> is an SSP,
+  be assembled from them. Everything in the <a href="/ssp">SSP Explorer</a> is an SSP,
   normalised to 10<sup>6</sup>&nbsp;M<sub>☉</sub> formed, tabulated at 51 ages spaced by
   0.1&nbsp;dex in log(age) from 10<sup>6</sup> to 10<sup>11</sup> years.
 </p>
@@ -32,14 +28,28 @@
 <h3>Initial mass function (IMF)</h3>
 <p>
   The IMF sets how many stars of each mass are born. Massive stars are rare but dominate the
-  ultraviolet light; low-mass stars are numerous and hoard most of the mass. BPASS names its
-  broken-power-law IMFs <code>imfXXX_YYY</code>, where <code>XXX</code> encodes the upper
-  slope and <code>YYY</code> the maximum stellar mass in M<sub>☉</sub>. The default,
-  <code>imf135_300</code>, uses a Salpeter-like upper slope (the "135") from
-  0.5&nbsp;M<sub>☉</sub> up to a 300&nbsp;M<sub>☉</sub> limit, with a shallower slope below
-  0.5&nbsp;M<sub>☉</sub>. Variants include <code>imf100_300</code> (a flatter, more top-heavy
-  upper slope) and <code>imf_chab300</code> (a Chabrier 2003 turnover at low mass). Comparing
-  them in the SED Explorer shows how much of a population's light rides on its rarest stars.
+  ultraviolet and ionizing light; low-mass stars are numerous and lock up most of the mass.
+  BPASS quotes the high-mass slope <em>α</em> of ξ(log<sub>10</sub>&nbsp;M) — number of stars
+  per decade in mass. Salpeter is <em>α</em>&nbsp;=&nbsp;1.35, which is a straight line of
+  slope −2.35 on the dN/dM plot below. A larger <em>α</em> means a steeper drop and fewer
+  massive stars.
+</p>
+<p>
+  Two shapes appear in this tool. The <strong>broken power-law</strong> (BPASS default, in
+  the spirit of Kroupa 2001) is shallower below 0.5&nbsp;M<sub>☉</sub> and Salpeter-like
+  above. <strong>Chabrier</strong> (2003) uses a log-normal turnover at low mass and the
+  same high-mass slope, so it has fewer faint M dwarfs but a similar budget of O and B
+  stars. <em>M</em><sub>max</sub> (100 or 300&nbsp;M<sub>☉</sub>) only changes the rarest,
+  hottest stars. Steeper or flatter high-mass slopes exist in the full release
+  (<em>α</em>&nbsp;=&nbsp;1.00 or 1.70). Compare them in the
+  <a href="/ssp">SSP Explorer</a> — the UV and ionizing panels move more than the optical.
+</p>
+<div id="imf-plot" class="plot-host compact" style="margin: 0.8rem 0 0.35rem;"></div>
+<p class="plot-note" id="imf-plot-note">
+  Differential number of stars per solar mass for the IMFs loaded here, matched at
+  1&nbsp;M<sub>☉</sub>. Power-law pieces are straight on this log–log plot; Chabrier
+  turns over below ~1&nbsp;M<sub>☉</sub>. Hover a Data &amp; API cell for the raw
+  filename tag.
 </p>
 <h3>Metallicity</h3>
 <p>
@@ -56,7 +66,7 @@
   populations are therefore <em>alpha-enhanced</em>: more alpha elements relative to iron
   than the Sun. The BPASS v2.3 release provides SEDs at five abundance mixes,
   Δ(log&nbsp;α/Fe) from −0.2 to +0.6, at the <em>same total Z</em> — so an alpha-rich
-  spectrum is also an iron-poor one. Select a v2.3 population in the SED Explorer and the
+  spectrum is also an iron-poor one. Select a v2.3 population in the SSP Explorer and the
   alpha dropdown activates.
 </p>
 <h3>Single vs. binary populations</h3>
@@ -70,7 +80,7 @@
 <ul>
   <li>Stripped stars keep binary populations <strong>bluer and harder-ionizing for far
       longer</strong> — single-star populations fade in the UV after ~10&nbsp;Myr, binary ones
-      don't. Compare <code>sin</code> vs <code>bin</code> at fixed age in the SED Explorer.</li>
+      don't. Compare <code>sin</code> vs <code>bin</code> at fixed age in the SSP Explorer.</li>
   <li>Mass gainers and mergers look <strong>younger than they are</strong> (blue
       stragglers).</li>
   <li>Supernovae and compact-object mergers happen <strong>later and in different
@@ -78,39 +88,44 @@
 </ul>
 <h3>Dust</h3>
 <p>
-  Interstellar dust dims and reddens starlight before it reaches us. The SED Explorer can
+  Interstellar dust dims and reddens starlight before it reaches us. The SSP Explorer can
   apply four attenuation/extinction laws — CCM89 and F99 (Milky Way), Gordon 03 (SMC bar) and
   Calzetti 00 (starbursts) — parameterised by E(B−V) and, where applicable, R<sub>V</sub>.
   Outside a law's validated wavelength range the curve is held at its boundary value and the
   affected region is flagged, so you always know when you are extrapolating.
 </p>
 
-<h2>3 · Using the SED Explorer</h2>
+<h2>3 · Using the SSP Explorer</h2>
 <ol>
   <li><strong>Pick a population</strong> — release, single/binary, IMF, metallicity (and alpha
       mix for v2.3) from the sidebar dropdowns.</li>
   <li><strong>Scrub through age</strong> with the slider, or press <strong>▶ play</strong> and
-      watch the blue side collapse and the red giants take over. The speed slider covers
-      decades of log-age per second; frames between grid ages are interpolated for smoothness
-      (see the honesty note below).</li>
-  <li><strong>Pin what you want to keep</strong>. "Keep this SED" freezes the current curve as
-      a persistent trace with its own chip — recolour or remove it there — then change any
-      control and compare.</li>
+      watch the blue side collapse and the red giants take over. Toggle extra panels
+      (star counts, ionizing photons, SN rates, surviving mass, yields) — they all follow
+      the same playbar. The speed slider covers decades of log-age per second; frames
+      between grid ages are interpolated for smoothness (see the honesty note below).</li>
+  <li><strong>Pin what you want to keep</strong>. "Pin SSP" freezes the current SED slice
+      and overlays that population's history on every visible timeseries plot — then
+      change any control and compare. Pin one (or more) and tick <strong>sum visible spectra</strong>
+      to add the live SSP to every pin at the ages shown: a mix of visible spectra,
+      not a star-formation history. <strong>Sync visible spectra ages</strong> locks
+      every overlay to the playhead.</li>
   <li><strong>Apply dust or rescale mass</strong> — mass is a pure vertical shift
-      (everything is linear in formed mass), dust reshapes the curve.</li>
-  <li><strong>Overlay filters and read magnitudes</strong>. The photometry table gives AB
-      magnitudes (absolute, i.e. at 10&nbsp;pc) through the bundled filter sets for the live
-      SED and every pinned one. Upload any two-column wavelength/transmission file to get
-      magnitudes through your own filter.</li>
-  <li><strong>Export</strong> the plot as PNG, or the spectrum as CSV/JSON at full native
+      (spectra and star counts scale linearly with formed mass); dust reshapes the SED only.</li>
+  <li><strong>Overlay filters and read magnitudes</strong>. The photometry table (collapsible,
+      below the SED) gives AB magnitudes (absolute, i.e. at 10&nbsp;pc) through the bundled
+      filter sets for the live SED and every pinned one. Upload any two-column
+      wavelength/transmission file to get magnitudes through your own filter.</li>
+  <li><strong>Export</strong> the SED plot as PNG, or the spectrum as CSV/JSON at full native
       resolution.</li>
 </ol>
 
-<h2>4 · Using the HR Explorer</h2>
+<h2>4 · Using the Star Explorer</h2>
 <p>
-  The <a href="/hr">HR Explorer</a> leaves populations behind and follows <em>individual</em>
-  stellar models — the raw material of the synthesis — across the Hertzsprung–Russell diagram
-  (temperature vs. luminosity, astronomy's most information-dense plot).
+  The <a href="/star">Star Explorer</a> leaves populations behind and follows <em>individual</em>
+  stellar models — the raw material of the synthesis. The Hertzsprung–Russell diagram
+  (temperature vs. luminosity) is the main plot; the readout and binary visualizer
+  show the rest of the star.
 </p>
 <ol>
   <li><strong>Choose a model</strong>: filter by metallicity and single/primary/secondary,
@@ -199,9 +214,14 @@
 </ul>
 
 <div class="cta-row">
-  <a class="btn primary" href="/sed">Try the SED Explorer</a>
-  <a class="btn" href="/hr">Try the HR Explorer</a>
+  <a class="btn primary" href="/ssp">Try the SSP Explorer</a>
+  <a class="btn accent" href="/star">Try the Star Explorer</a>
 </div>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/vendor/plotly-4.1.0.min.js"></script>
+<script type="module" src="/static/js/tutorial-imf.js"></script>
 {% endblock %}

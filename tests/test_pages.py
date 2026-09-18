@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-PAGES = ["/", "/sed", "/hr", "/tutorial", "/data", "/about"]
+from bib.config import get_branding, get_settings
+
+PAGES = ["/", "/index.html", "/ssp", "/star", "/tutorial", "/data", "/about"]
 
 
 @pytest.mark.parametrize("path", PAGES)
@@ -12,6 +14,33 @@ def test_page_renders(client, path):
     response = client.get(path)
     assert response.status_code == 200
     assert "BPASS-in-Browser" in response.text
+
+
+def test_ssp_page_is_ssp_explorer(client):
+    html = client.get("/ssp").text
+    assert "SSP Explorer" in html
+    assert "Pin SSP" in html
+    assert "sum visible spectra" in html
+    assert "Star counts" in html
+    assert "SED Explorer" not in html
+
+
+def test_sed_url_redirects_to_ssp(client):
+    response = client.get("/sed", follow_redirects=False)
+    assert response.status_code in (301, 307, 308)
+    assert response.headers["location"].endswith("/ssp")
+
+
+def test_star_page_is_star_explorer(client):
+    html = client.get("/star").text
+    assert "Star Explorer" in html
+    assert "HR Explorer" not in html
+
+
+def test_hr_url_redirects_to_star(client):
+    response = client.get("/hr", follow_redirects=False)
+    assert response.status_code in (301, 307, 308)
+    assert response.headers["location"].endswith("/star")
 
 
 def test_landing_carries_official_acknowledgements(client):
@@ -24,18 +53,43 @@ def test_landing_carries_official_acknowledgements(client):
 def test_about_has_acknowledgement_anchor(client):
     html = client.get("/about").text
     assert 'id="acknowledgement"' in html  # the footer links to /about#acknowledgement
+    assert "Cursor" in html
+    assert "late 2026" in html
 
 
 def test_tutorial_mentions_key_concepts(client):
     html = client.get("/tutorial").text
-    for phrase in ("simple stellar population", "Roche-lobe", "imf135_300", "OpenDyslexic"):
+    for phrase in ("simple stellar population", "Roche-lobe", "Chabrier", "OpenDyslexic"):
         assert phrase in html, phrase
+    assert 'id="imf-plot"' in html
+    assert "Ten minutes of background" not in html
 
 
-def test_data_page_documents_cli(client):
+def test_data_page_is_catalogue_not_ingest_guide(client):
     html = client.get("/data").text
-    assert "bib ingest" in html
-    assert "bib demo-seed" in html
+    assert "bib ingest" not in html
+    assert "bib demo-seed" not in html
+    assert "project source" in html
+    assert 'href="/api/docs"' in html
+    assert "GET /api/v1/meta" in html
+
+
+def test_data_page_links_configured_source_url(client):
+    from bib.config import Branding
+    from bib.web.templating import templates
+
+    original = templates.env.globals["branding"]
+    templates.env.globals["branding"] = Branding(
+        site_name=original.site_name,
+        full_name=original.full_name,
+        source_url="https://example.org/bib",
+    )
+    try:
+        html = client.get("/data").text
+        assert 'href="https://example.org/bib"' in html
+        assert "source repository" in html
+    finally:
+        templates.env.globals["branding"] = original
 
 
 def test_api_docs_served(client):
@@ -45,3 +99,35 @@ def test_api_docs_served(client):
     paths = schema.json()["paths"]
     assert "/api/v1/meta" in paths
     assert "/api/v1/populations/{population_id}/sed" in paths
+
+
+@pytest.mark.parametrize("path", ["/api", "/api/", "/api/v1", "/api/v1/"])
+def test_api_v1_root_redirects_to_docs(client, path):
+    response = client.get(path, follow_redirects=False)
+    assert response.status_code in (302, 307, 308)
+    assert response.headers["location"].endswith("/api/docs")
+
+
+def test_landing_and_data_link_api_docs(client):
+    home = client.get("/").text
+    assert 'href="/api/docs"' in home
+    assert "Star Explorer" in home
+    assert "HR Explorer" not in home
+
+
+def test_api_docs_hidden_when_disabled(monkeypatch):
+    monkeypatch.setenv("BIB_EXPOSE_DOCS", "false")
+    get_settings.cache_clear()
+    get_branding.cache_clear()
+    from fastapi.testclient import TestClient
+
+    from bib.app import create_app
+
+    try:
+        with TestClient(create_app()) as hidden:
+            assert hidden.get("/api/docs").status_code == 404
+            assert hidden.get("/api/openapi.json").status_code == 404
+            assert 'href="/api/docs"' not in hidden.get("/data").text
+    finally:
+        get_settings.cache_clear()
+        get_branding.cache_clear()
