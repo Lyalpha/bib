@@ -54,6 +54,23 @@
     </div>
 
     <div class="control-group">
+      <label>Redshift <span class="muted" id="cosmo-note" title="flat ΛCDM, H₀=70 km/s/Mpc, Ωm=0.3">z</span></label>
+      <div class="control-inline">
+        <input type="range" id="sl-redshift" min="0" max="10" step="0.05" value="0" style="--fill: 0%">
+        <output id="out-redshift">0.00</output>
+      </div>
+      <span class="small muted" id="dl-note">D<sub>L</sub> = 10 pc · absolute mags</span>
+      <label class="row" style="text-transform:none; letter-spacing:0; margin-top:0.45rem;" title="Vacuum rest wavelengths × (1+z), live SSP only">
+        <input type="checkbox" id="chk-lyman" style="width:auto;">
+        <span>Show Lyman series for current SSP</span>
+      </label>
+      <label class="row" style="text-transform:none; letter-spacing:0;" title="Vacuum rest wavelengths × (1+z), live SSP only">
+        <input type="checkbox" id="chk-balmer" style="width:auto;">
+        <span>Show Balmer series for current SSP</span>
+      </label>
+    </div>
+
+    <div class="control-group">
       <label>Dust law</label>
       <select id="sel-dust">
         <option value="">No dust</option>
@@ -74,24 +91,12 @@
       </div>
     </div>
 
-    <hr style="margin:0.4rem 0;">
-
-    <div class="control-group">
-      <label>Redshift <span class="muted" id="cosmo-note" title="flat ΛCDM, H₀=70 km/s/Mpc, Ωm=0.3">z</span></label>
-      <div class="control-inline">
-        <input type="range" id="sl-redshift" min="0" max="10" step="0.05" value="0" style="--fill: 0%">
-        <output id="out-redshift">0.00</output>
-      </div>
-      <span class="small muted" id="dl-note">D<sub>L</sub> = 10 pc · absolute mags</span>
-      <label class="row" style="text-transform:none; letter-spacing:0; margin-top:0.45rem;" title="Vacuum rest wavelengths × (1+z)">
-        <input type="checkbox" id="chk-lyman" style="width:auto;">
-        <span>Show Lyman series</span>
-      </label>
-      <label class="row" style="text-transform:none; letter-spacing:0;" title="Vacuum rest wavelengths × (1+z)">
-        <input type="checkbox" id="chk-balmer" style="width:auto;">
-        <span>Show Balmer series</span>
-      </label>
+    <div class="control-group pin-action">
+      <button class="primary" id="btn-pin" title="Keep this SSP on every visible plot while you change parameters">📌 Pin SSP on plots</button>
+      <span class="small muted">Freezes this SED on every visible plot so you can change IMF, Z or binary/single and compare.</span>
     </div>
+
+    <hr style="margin:0.4rem 0;">
 
     <div class="control-group">
       <label>Visible plots</label>
@@ -102,10 +107,6 @@
       <label class="plot-toggle"><input type="checkbox" data-panel="mass"> Surviving mass</label>
       <label class="plot-toggle"><input type="checkbox" data-panel="yields"> Chemical yields</label>
     </div>
-
-    <div class="row">
-      <button class="primary" id="btn-pin" title="Keep this SSP on every visible plot while you change parameters">📌 Pin SSP</button>
-    </div>
     <details class="help">
       <summary>What am I looking at?</summary>
       <p class="small">A simple stellar population: all stars born in one instantaneous burst.
@@ -115,7 +116,8 @@
       pins, <strong>sum visible spectra</strong> adds the live SSP to every pin at the
       ages shown (the playhead if <strong>sync visible spectra ages</strong> is on).
       That mix is not a star-formation history.
-      Photometry is the live SSP only, from the full-resolution spectrum at the nearest
+      Photometry is computed for the current (live) SSP only — pinned overlays
+      are not photometered — using the full-resolution spectrum at the nearest
       grid age. Redshift shifts only the SED into the observer frame; ionizing photons,
       star counts and rates stay rest-frame. Trail snapshots drop a faded SED every
       0.5&nbsp;dex while playing, only when nothing is pinned.
@@ -142,7 +144,7 @@
       <label class="chip sync-chip" id="chip-sync" hidden title="Lock every visible SED to the playhead age. Redshift, dust and mass stay as they were when you pinned.">
         <input type="checkbox" id="chk-sync"> 🔗 sync visible spectra ages
       </label>
-      <label class="chip sync-chip" id="chip-sum" title="Pin an SSP to sum it with the live spectrum.">
+      <label class="chip sync-chip" id="chip-sum" hidden title="Pin an SSP to sum it with the live spectrum.">
         <input type="checkbox" id="chk-sum"> Σ sum visible spectra
       </label>
       <span class="chips" id="pin-chips" style="display:contents;"></span>
@@ -186,9 +188,11 @@
           <tbody></tbody>
         </table>
       </div>
-      <p class="plot-note">Computed from the full-resolution SED at the nearest grid age
-        (<span id="phot-age">—</span>). Tick a filter to overlay its passband and the measured
-        magnitude as a point on the SED.
+      <p class="plot-note">Magnitudes are for the <strong>current (live) SSP only</strong> —
+        pinned overlays are not photometered. They use that SSP’s full-resolution SED at
+        the nearest grid age (<span id="phot-age">—</span>), not the interpolated display
+        curve. Tick a filter to overlay its passband and the measured magnitude as a point
+        on the SED.
         <span id="hidden-filters" hidden> <a href="#" id="lnk-partial"></a></span>
       </p>
     </details>
@@ -226,5 +230,5 @@
 
 {% block scripts %}
 <script src="/static/vendor/plotly-4.1.0.min.js"></script>
-<script type="module" src="/static/js/sed.js?v=9"></script>
+<script type="module" src="/static/js/sed.js?v=11"></script>
 {% endblock %}

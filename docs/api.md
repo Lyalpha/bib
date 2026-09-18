@@ -1,25 +1,35 @@
 # REST API
 
 Everything the interface displays is served from `/api/v1`. Interactive
-OpenAPI documentation lives at `/api/docs` (ReDoc at `/api/redoc`). The API is
-deliberately parameter-rich — it is the foundation for a future generic query
-builder.
+OpenAPI documentation lives at `/api/docs` (ReDoc at `/api/redoc`). `/api` and
+`/api/v1` redirect there. Set `BIB_EXPOSE_DOCS=false` to hide the UI (the JSON
+API stays up). The API is deliberately parameter-rich — it is the foundation
+for a future generic query builder.
+
+`population_id` is the integer `id` of a loaded simple stellar population
+(one release × IMF × metallicity × binary/single × α-mix). List them with
+`GET /api/v1/populations`. Ages are `log_age` = log₁₀(age/yr) on BPASS's
+0.1 dex grid from 6.0 (1 Myr) to 11.0 (100 Gyr). SED fetches default to the
+**native** 1 Å science grid.
+
+The in-browser explorer uses a private playback endpoint that is not part of
+the public schema.
 
 ## Endpoints at a glance
 
 | endpoint | purpose |
 |---|---|
-| `GET /api/v1/health` | liveness |
-| `GET /api/v1/meta` | releases, populations, age grid, dust laws, counts — everything selectors need |
-| `GET /api/v1/populations` | list/filter populations (`release`, `imf`, `z_label`, `pop_type`, `alpha_label`) |
+| `GET /api/v1/health` | liveness (no database; `{"status":"ok","version":…}`) |
+| `GET /api/v1/ready` | readiness (`SELECT 1`; 200 `{"status":"ok"}` or 503 `{"status":"unavailable"}`) |
+| `GET /api/v1/meta` | releases, populations (`imf` plus parsed `imf_info`), unique `imfs` with ξ curves, age grid, dust laws |
+| `GET /api/v1/populations` | list/filter populations (`release`, `imf`, `z_label`, `pop_type`, `alpha_label`); each row has `id` |
 | `GET /api/v1/populations/{id}` | detail incl. provenance and per-age bolometric luminosities |
-| `GET /api/v1/populations/{id}/sed` | one SED; `age_index`, `resolution=display|native`, `mass`, `dust_law`, `ebv`, `rv`, `format=json|csv` |
-| `GET /api/v1/populations/{id}/sed_frames` | all 51 display-resolution SEDs for playback |
-| `GET /api/v1/populations/{id}/timeseries` | per-age tables: `colours`, `ionizing`, `starmass`, `sn_rates`, `yields`, `mlratio` |
+| `GET /api/v1/populations/{id}/sed` | one native-resolution SED; `log_age`, `mass`, `dust_law`, `ebv`, `rv`, `format=json\|csv` |
+| `GET /api/v1/populations/{id}/timeseries` | per-age tables: `colours`, `ionizing`, `starmass`, `sn_rates`, `yields`, `mlratio`, `star_counts` |
 | `GET /api/v1/populations/{id}/hrd` | HRD occupation grids (uint8-quantized, base64) for animation |
 | `GET /api/v1/filters` | bundled filter metadata |
 | `GET /api/v1/filters/{name}/curve` | transmission curve |
-| `GET /api/v1/photometry` | absolute AB magnitudes through bundled filters |
+| `GET /api/v1/photometry` | absolute AB magnitudes through bundled filters (`population_id`, `log_age`) |
 | `POST /api/v1/photometry/custom` | upload a transmission curve, get its AB magnitude |
 | `GET /api/v1/models` | stellar-model search (`kind`, `z_label`, `m1_min`, `m1_max`, `curated`) |
 | `GET /api/v1/models/{id}` | model detail + events |
@@ -27,18 +37,32 @@ builder.
 
 ## Examples
 
+Replace `{id}` with an `id` from `GET /api/v1/populations` on the instance you
+are querying. The Data & API page on a running server fills these in for you.
+
 ```sh
-# what's loaded
-curl -s localhost:8000/api/v1/meta | jq .releases
+# liveness / readiness (ready is 503 when PostgreSQL is down)
+curl -s localhost:8000/api/v1/health
+curl -s localhost:8000/api/v1/ready
 
-# a reddened SED as CSV at full resolution
-curl -s "localhost:8000/api/v1/populations/1/sed?age_index=30&dust_law=smc&ebv=0.1&format=csv" -o sed.csv
+# catalogue of loaded populations (id, release, IMF, Z, binary/single, products)
+curl -s localhost:8000/api/v1/populations | jq '.[0]'
 
-# AB magnitudes
-curl -s "localhost:8000/api/v1/photometry?population_id=1&age_index=30&filters=sdss.g,sdss.r" | jq .photometry
+# native-resolution rest-frame SED at log10(age/yr)=9.0 (1 Gyr):
+# wavelength [Å], flux [Lsun/Å] at 1e6 Msun formed
+curl -s "localhost:8000/api/v1/populations/{id}/sed?log_age=9.0"
 
-# custom filter upload
-curl -s -F "file=@myfilter.txt" -F population_id=1 -F age_index=30 \
+# same SED as CSV (full precision, two columns)
+curl -s "localhost:8000/api/v1/populations/{id}/sed?log_age=9.0&format=csv" -o sed.csv
+
+# a reddened native SED as CSV
+curl -s "localhost:8000/api/v1/populations/{id}/sed?log_age=9.0&dust_law=smc&ebv=0.1&format=csv" -o sed.csv
+
+# absolute AB magnitudes through SDSS g and r for that SED (source at 10 pc)
+curl -s "localhost:8000/api/v1/photometry?population_id={id}&log_age=9.0&filters=sdss.g,sdss.r" | jq .photometry
+
+# custom filter upload (two-column wavelength [Å], transmission)
+curl -s -F "file=@myfilter.txt" -F population_id={id} -F log_age=9.0 \
      localhost:8000/api/v1/photometry/custom | jq .result
 
 # binary primaries between 10 and 20 Msun

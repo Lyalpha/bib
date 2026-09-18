@@ -14,10 +14,12 @@ from bib.api.v1.helpers import (
     encode_u8_log,
     get_population_or_404,
     population_summary,
+    resolve_age_index,
     sig_round,
 )
 from bib.db import models as m
 from bib.db.session import get_db
+from bib.science import redshift as zlib
 from bib.science import sed as sedlib
 from bib.science.dust import DUST_LAWS, apply_dust
 
@@ -39,6 +41,12 @@ _TIMESERIES_TABLES: dict[str, tuple[type, list[str]]] = {
         "wind_h", "wind_he", "wind_z", "wind_energy", "sn_energy", "sn_h", "sn_he", "sn_z",
     ]),
     "mlratio": (m.MLRatio, ["ml_k", "ml_v"]),
+    "star_counts": (m.StarCounts, [
+        "n_o_hi", "n_of_hi", "n_b_hi", "n_a_hi", "n_ysg_hi",
+        "n_k_hi", "n_m_hi", "n_wnh_hi", "n_wn_hi", "n_wc_hi",
+        "n_o_lo", "n_of_lo", "n_b_lo", "n_a_lo", "n_ysg_lo",
+        "n_k_lo", "n_m_lo", "n_wnh_lo", "n_wn_lo", "n_wc_lo",
+    ]),
 }
 
 
@@ -129,31 +137,64 @@ def _apply_transforms(
     return flux, dust_info
 
 
-@router.get("/populations/{population_id}/sed", summary="SED at one age (plot or download)")
+@router.get("/populations/{population_id}/sed", summary="Native-resolution SED at one age")
 def get_sed(
     population_id: int,
-    age_index: int = Query(ge=0, le=50),
-    resolution: str = Query("display", pattern="^(display|native)$"),
+    log_age: float | None = Query(
+        None,
+        ge=6.0,
+        le=11.0,
+        description="log10(age/yr) on the BPASS 0.1 dex grid (6.0–11.0). Prefer this over age_index.",
+    ),
+    age_index: int | None = Query(
+        None, ge=0, le=50, description="0–50 grid index; prefer log_age"
+    ),
+    resolution: str = Query("native", pattern="^(display|native)$"),
     mass: float = Query(1e6, gt=0, description="Formed stellar mass in Msun (BPASS native: 1e6)"),
     dust_law: str | None = None,
     ebv: float = Query(0.0, ge=0.0, le=5.0),
     rv: float | None = Query(None, gt=1.0, lt=10.0),
+    redshift: float = Query(0.0, ge=0.0, le=zlib.MAX_REDSHIFT),
     format: str = Query("json", pattern="^(json|csv)$"),
     db: Session = Depends(get_db),
 ):
-    """SED in L_sun/Å. ``display`` resolution for plots, ``native`` for science/downloads."""
+    """SED at one age, native wavelength grid by default.
+
+    ``log_age`` is log10(age/yr), snapped to BPASS's 0.1 dex grid (6.0 = 1 Myr … 11.0 =
+    100 Gyr). ``redshift=0`` (default): rest frame, L_sun/Å. ``redshift>0``:
+    observer frame — wavelengths stretched by (1+z) and flux returned as f_λ in
+    erg/s/cm²/Å at the luminosity distance of z (flat ΛCDM, H0=70, Ωm=0.3);
+    dust is applied in the rest frame first. ``native`` resolution is the
+    science grid; ``display`` is a rebinned copy used only by the in-browser
+    explorer.
+    """
+    age_index = resolve_age_index(age_index, log_age)
     population = get_population_or_404(db, population_id)
     wavelength, flux, sed = _load_sed_arrays(db, population, age_index, resolution)
     flux, dust_info = _apply_transforms(wavelength, flux, mass, dust_law, ebv, rv)
+
+    flux_unit = "lsun_per_angstrom (rest frame)"
+    dl_mpc = None
+    if redshift > 0:
+        wavelength, flux = zlib.observe(wavelength, flux, redshift)
+        flux_unit = "erg/s/cm2/angstrom (observer frame at D_L)"
+        dl_mpc = zlib.luminosity_distance_mpc(redshift)
 
     if format == "csv":
         buf = io.StringIO()
         buf.write(f"# bib SED — population {population_id}, log(age/yr)={sed.log_age}\n")
         buf.write(f"# mass={mass} Msun; dust={dust_info}\n")
-        buf.write("wavelength_angstrom,flux_lsun_per_angstrom\n")
+        if redshift > 0:
+            buf.write(
+                f"# redshift={redshift}; D_L={dl_mpc:.2f} Mpc ({zlib.COSMOLOGY_LABEL}); "
+                "observer-frame wavelengths\n"
+            )
+            buf.write("wavelength_angstrom_observed,flux_erg_s_cm2_angstrom\n")
+        else:
+            buf.write("wavelength_angstrom,flux_lsun_per_angstrom\n")
         np.savetxt(buf, np.column_stack([wavelength, flux]), delimiter=",", fmt="%.8e")
         buf.seek(0)
-        name = f"bib_sed_pop{population_id}_age{age_index}_{resolution}.csv"
+        name = f"bib_sed_pop{population_id}_logage{sed.log_age:.1f}_{resolution}.csv"
         return StreamingResponse(
             iter([buf.getvalue()]),
             media_type="text/csv",
@@ -163,6 +204,9 @@ def get_sed(
     return {
         "population_id": population_id,
         "age_index": age_index,
+        "redshift": redshift,
+        "flux_unit": flux_unit,
+        "luminosity_distance_mpc": dl_mpc,
         "log_age": sed.log_age,
         "log_lbol": sed.log_lbol,
         "resolution": resolution,
@@ -176,6 +220,7 @@ def get_sed(
 @router.get(
     "/populations/{population_id}/sed_frames",
     summary="All 51 display-resolution SEDs (for age playback)",
+    include_in_schema=False,
 )
 def get_sed_frames(
     population_id: int,
@@ -217,7 +262,7 @@ def get_sed_frames(
 @router.get("/populations/{population_id}/timeseries", summary="Per-age product table")
 def get_timeseries(
     population_id: int,
-    table: str = Query(pattern="^(colours|ionizing|starmass|sn_rates|yields|mlratio)$"),
+    table: str = Query(pattern="^(colours|ionizing|starmass|sn_rates|yields|mlratio|star_counts)$"),
     db: Session = Depends(get_db),
 ) -> dict:
     get_population_or_404(db, population_id)

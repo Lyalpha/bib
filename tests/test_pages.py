@@ -19,7 +19,7 @@ def test_page_renders(client, path):
 def test_ssp_page_is_ssp_explorer(client):
     html = client.get("/ssp").text
     assert "SSP Explorer" in html
-    assert "Pin SSP" in html
+    assert "Pin SSP on plots" in html
     assert "sum visible spectra" in html
     assert "Star counts" in html
     assert "SED Explorer" not in html
@@ -71,7 +71,9 @@ def test_data_page_is_catalogue_not_ingest_guide(client):
     assert "bib demo-seed" not in html
     assert "project source" in html
     assert 'href="/api/docs"' in html
-    assert "GET /api/v1/meta" in html
+    assert "population_id" in html
+    assert 'id="api-examples"' in html
+    assert "log_age" in html
 
 
 def test_data_page_links_configured_source_url(client):
@@ -99,6 +101,7 @@ def test_api_docs_served(client):
     paths = schema.json()["paths"]
     assert "/api/v1/meta" in paths
     assert "/api/v1/populations/{population_id}/sed" in paths
+    assert "/api/v1/populations/{population_id}/sed_frames" not in paths
 
 
 @pytest.mark.parametrize("path", ["/api", "/api/", "/api/v1", "/api/v1/"])

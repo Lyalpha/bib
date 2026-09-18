@@ -25,7 +25,7 @@ the operator's view of the two explorers.
    \((10\,\mathrm{pc}/D_L)^2/(1+z)\) (flat ΛCDM). Photometry switches from
    absolute \(M_\mathrm{AB}\) at \(D_L=10\,\mathrm{pc}\) to apparent \(m_\mathrm{AB}\).
    Timeseries panels stay in the rest frame.
-7. **Pin SSP** — overlays this population on every visible plot (frozen SED
+7. **Pin SSP on plots** — overlays this population on every visible plot (frozen SED
    slice plus that SSP's full history on the timeseries). A management chip
    lets you remove it. Pinned SSPs survive selector changes. With one or more
    pins, **sum visible spectra** adds the live SSP and every pin. **Sync

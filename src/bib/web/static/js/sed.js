@@ -14,7 +14,7 @@ import {
   setAuxAgeClickHandler,
   SUM_COLOR,
   wantPinSum,
-} from "./ssp-plots.js?v=9";
+} from "./ssp-plots.js?v=11";
 
 const $ = (id) => document.getElementById(id);
 const css = (name) =>
@@ -1062,16 +1062,15 @@ async function ensureCurve(key) {
 function updateExportLinks() {
   if (state.popId === null) return;
   const ageIndex = Math.round(Number($("sl-age").value));
-  const common = { age_index: ageIndex, mass: massMsun(), ...dustParams() };
+  const logAge = (6 + ageIndex * 0.1).toFixed(1);
+  const common = { log_age: logAge, mass: massMsun(), ...dustParams() };
   if (state.redshift > 0) common.redshift = state.redshift;
   $("lnk-csv").href = apiUrl(`/populations/${state.popId}/sed`, {
     ...common,
-    resolution: "native",
     format: "csv",
   });
   $("lnk-json").href = apiUrl(`/populations/${state.popId}/sed`, {
     ...common,
-    resolution: "native",
   });
 }
 
@@ -1088,16 +1087,13 @@ function renderColorKey(logAge) {
     rows.push({ color: pin.color, label: pinView(pin, t).label });
   }
   if (wantPinSum(state)) rows.push({ color: SUM_COLOR, label: "Σ visible spectra" });
-  const hint =
-    state.sumPins && state.pins.length < 1 ? "Pin an SSP to sum it with the live spectrum." : "";
-  host.innerHTML =
-    rows
-      .map(
-        (row) =>
-          `<div class="key-row"><span class="key-dot" style="--key-color:${row.color}"></span>` +
-          `<span class="key-label">${row.label}</span></div>`,
-      )
-      .join("") + (hint ? `<p class="key-hint">${hint}</p>` : "");
+  host.innerHTML = rows
+    .map(
+      (row) =>
+        `<div class="key-row"><span class="key-dot" style="--key-color:${row.color}"></span>` +
+        `<span class="key-label">${row.label}</span></div>`,
+    )
+    .join("");
 }
 
 function renderPins() {
@@ -1107,6 +1103,7 @@ function renderPins() {
   $("chip-sync").title =
     "Lock every visible SED to the playhead age. Redshift, dust and mass stay as they were when you pinned.";
   $("chk-sum").checked = state.sumPins;
+  $("chip-sum").hidden = state.pins.length === 0;
   $("chip-sum").classList.toggle("is-ready", state.pins.length >= 1);
   $("chip-sum").title =
     state.pins.length >= 1

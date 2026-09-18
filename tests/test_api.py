@@ -40,6 +40,11 @@ def test_meta_shape(meta):
     assert {law["key"] for law in meta["dust_laws"]} == {"ccm89", "f99", "calzetti00", "smc"}
     assert meta["n_stellar_models"] >= 5
     assert meta["has_synthetic"] is True
+    assert meta["imfs"]
+    assert all("form_label" in imf and "dndm" in imf for imf in meta["imfs"])
+    sample = meta["populations"][0]
+    assert sample["imf_info"]["code"] == sample["imf"]
+    assert "form_label" in sample["imf_info"]
 
 
 def test_population_list_filters(api_client, demo_population):
@@ -63,14 +68,30 @@ def test_population_404(api_client):
 
 def test_sed_display_and_native(api_client, demo_population):
     pid = demo_population["id"]
-    display = api_client.get(f"/api/v1/populations/{pid}/sed", params={"age_index": 20}).json()
-    native = api_client.get(
-        f"/api/v1/populations/{pid}/sed", params={"age_index": 20, "resolution": "native"}
+    display = api_client.get(
+        f"/api/v1/populations/{pid}/sed", params={"age_index": 20, "resolution": "display"}
     ).json()
+    native = api_client.get(f"/api/v1/populations/{pid}/sed", params={"log_age": 8.0}).json()
+    assert native["resolution"] == "native"
     assert len(display["wavelength"]) == len(display["flux"])
     assert len(native["wavelength"]) == len(native["flux"])
     assert len(native["wavelength"]) >= len(display["wavelength"])
-    assert display["log_age"] == pytest.approx(8.0)
+    assert native["log_age"] == pytest.approx(8.0)
+    assert native["age_index"] == 20
+
+
+def test_sed_log_age_preferred(api_client, demo_population):
+    pid = demo_population["id"]
+    by_log = api_client.get(f"/api/v1/populations/{pid}/sed", params={"log_age": 9.0}).json()
+    by_index = api_client.get(f"/api/v1/populations/{pid}/sed", params={"age_index": 30}).json()
+    assert by_log["age_index"] == 30
+    assert by_log["log_age"] == pytest.approx(by_index["log_age"])
+    missing = api_client.get(f"/api/v1/populations/{pid}/sed")
+    assert missing.status_code == 422
+    clash = api_client.get(
+        f"/api/v1/populations/{pid}/sed", params={"log_age": 9.0, "age_index": 0}
+    )
+    assert clash.status_code == 422
 
 
 def test_sed_mass_scaling(api_client, demo_population):
@@ -134,6 +155,11 @@ def test_timeseries_and_validation(api_client, demo_population):
     ).json()
     assert len(colours["log_age"]) == 51
     assert "sdss_g" in colours["columns"]
+    counts = api_client.get(
+        f"/api/v1/populations/{pid}/timeseries", params={"table": "star_counts"}
+    ).json()
+    assert len(counts["log_age"]) == 51
+    assert "n_o_hi" in counts["columns"]
     assert (
         api_client.get(f"/api/v1/populations/{pid}/timeseries", params={"table": "nope"})
     ).status_code == 422
@@ -179,9 +205,64 @@ def test_filters_bundled(api_client):
     filters = api_client.get("/api/v1/filters").json()
     names = {f["name"] for f in filters}
     assert {"sdss.g", "sdss.r", "2mass.j"} <= names
+    groups = [f["group"] for f in filters]
+    first_jwst = groups.index("JWST")
+    first_galex = groups.index("GALEX")
+    assert first_jwst < groups.index("HST") < groups.index("LSST") < first_galex
     curve = api_client.get("/api/v1/filters/sdss.g/curve").json()
     assert len(curve["wavelength"]) == len(curve["transmission"])
+    assert max(curve["transmission"]) == pytest.approx(1.0, abs=1e-3)
+    galex = api_client.get("/api/v1/filters/galex.fuv/curve").json()
+    assert max(galex["transmission"]) == pytest.approx(1.0, abs=1e-3)
     assert api_client.get("/api/v1/filters/nosuch/curve").status_code == 404
+
+
+def test_sed_redshift_observer_frame(api_client, demo_population):
+    pid = demo_population["id"]
+    rest = api_client.get(f"/api/v1/populations/{pid}/sed", params={"age_index": 20}).json()
+    obs = api_client.get(
+        f"/api/v1/populations/{pid}/sed", params={"age_index": 20, "redshift": 2.0}
+    ).json()
+    assert obs["redshift"] == 2.0
+    assert "erg/s/cm2" in obs["flux_unit"]
+    assert obs["luminosity_distance_mpc"] > 10000  # D_L(2) ≈ 15.5 Gpc
+    assert obs["wavelength"][0] == pytest.approx(rest["wavelength"][0] * 3.0, rel=1e-4)
+    assert obs["wavelength"][-1] == pytest.approx(rest["wavelength"][-1] * 3.0, rel=1e-4)
+
+
+def test_photometry_redshift_distance_modulus(api_client, demo_population):
+    """At tiny z the apparent mag is M + μ − 2.5log10(1+z) ± a tiny K-term."""
+    pid = demo_population["id"]
+    params = {"population_id": pid, "age_index": 20, "filters": "sdss.i"}
+    absolute = api_client.get("/api/v1/photometry", params=params).json()
+    assert absolute["frame"] == "absolute (10 pc)"
+
+    z = 0.001
+    apparent = api_client.get("/api/v1/photometry", params={**params, "redshift": z}).json()
+    assert apparent["frame"] == "apparent"
+    d_l_pc = apparent["luminosity_distance_mpc"] * 1e6
+    mu = 5.0 * math.log10(d_l_pc / 10.0)
+    shift = apparent["photometry"][0]["ab_mag"] - absolute["photometry"][0]["ab_mag"]
+    assert shift == pytest.approx(mu - 2.5 * math.log10(1 + z), abs=0.05)
+
+
+def test_photometry_plot_level_hugs_sed(api_client, demo_population):
+    """The marker level should sit on the plotted curve (smooth SED region)."""
+    pid = demo_population["id"]
+    z = 1.5
+    phot = api_client.get(
+        "/api/v1/photometry",
+        params={"population_id": pid, "age_index": 20, "filters": "sdss.i", "redshift": z},
+    ).json()["photometry"][0]
+    sed = api_client.get(
+        f"/api/v1/populations/{pid}/sed",
+        params={"age_index": 20, "resolution": "native"},
+    ).json()
+    wl_obs = [w * (1 + z) for w in sed["wavelength"]]
+    plot_flux = [f / (1 + z) for f in sed["flux"]]
+    # curve value nearest the filter's effective wavelength
+    idx = min(range(len(wl_obs)), key=lambda i: abs(wl_obs[i] - phot["lambda_eff"]))
+    assert phot["plot_level"] == pytest.approx(plot_flux[idx], rel=0.2)
 
 
 def test_photometry_bundled_and_mass_shift(api_client, demo_population):
@@ -201,6 +282,20 @@ def test_photometry_bundled_and_mass_shift(api_client, demo_population):
     shift = heavier["photometry"][0]["ab_mag"] - mags["sdss.g"]
     # ab_mag is rounded to 4 decimals in the payload
     assert shift == pytest.approx(-2.5 * math.log10(2.0), abs=2e-4)
+
+
+def test_photometry_accepts_log_age(api_client, demo_population):
+    pid = demo_population["id"]
+    by_log = api_client.get(
+        "/api/v1/photometry",
+        params={"population_id": pid, "log_age": 8.0, "filters": "sdss.g"},
+    ).json()
+    by_index = api_client.get(
+        "/api/v1/photometry",
+        params={"population_id": pid, "age_index": 20, "filters": "sdss.g"},
+    ).json()
+    assert by_log["log_age"] == pytest.approx(8.0)
+    assert by_log["photometry"][0]["ab_mag"] == by_index["photometry"][0]["ab_mag"]
 
 
 def test_photometry_unknown_filter(api_client, demo_population):
