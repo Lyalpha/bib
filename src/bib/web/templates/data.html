@@ -21,7 +21,7 @@
   <div class="table-wrap wide">
     <table class="data" id="pop-table">
       <thead><tr>
-        <th>id</th><th>Release</th><th>IMF</th><th>α / M<sub>max</sub></th><th>Z</th><th>Type</th><th>&alpha;-mix</th><th>Products</th><th></th>
+        <th>id</th><th>Release</th><th>IMF</th><th>α / M<sub>max</sub></th><th>Z</th><th>Type</th><th>&alpha;-mix</th><th>Products</th><th id="col-demo"{% if not has_synthetic %} hidden{% endif %}></th>
       </tr></thead>
       <tbody><tr><td colspan="9" class="muted">Loading…</td></tr></tbody>
     </table>
@@ -30,7 +30,9 @@
 <p class="small muted">
   Every ingested population carries provenance (source filename + SHA-256) — query
   <code>/api/v1/populations/{id}</code> to see it.
+  {% if has_synthetic %}
   Rows marked <span class="badge warn">demo</span> are synthetic toy data, not BPASS output.
+  {% endif %}
 </p>
 
 <div class="prose">
@@ -87,5 +89,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="/static/js/data-page.js?v=3"></script>
+<script type="module" src="/static/js/data-page.js?v=4"></script>
 {% endblock %}

@@ -96,6 +96,10 @@ function imfLabel(code) {
   return info?.label || code;
 }
 
+// Fiducial BPASS IMF: broken power-law α = 1.35, M_max = 300 M☉.
+// v2.3 ships only this IMF; v2.2.1 has several, and this is the one shown first.
+const DEFAULT_IMF = "imf135_300";
+
 function setOptions(select, options, preferred = null) {
   const previous = select.value;
   select.innerHTML = "";
@@ -123,7 +127,11 @@ function rebuildSelectors() {
   const imfs = [...new Set(pops.map((p) => p.imf))].sort((a, b) =>
     imfLabel(a).localeCompare(imfLabel(b), undefined, { numeric: true })
   );
-  setOptions($("sel-imf"), imfs.map((v) => ({ value: v, label: imfLabel(v) })));
+  setOptions(
+    $("sel-imf"),
+    imfs.map((v) => ({ value: v, label: imfLabel(v) })),
+    DEFAULT_IMF
+  );
   const imf = $("sel-imf").value;
 
   const afterImf = pops.filter((p) => p.imf === imf);

@@ -14,7 +14,10 @@ function popLabel(p) {
 function pickExample(pops) {
   const pool = pops.filter((p) => !p.is_synthetic);
   const src = pool.length ? pool : pops;
+  const fiducial = (p) => p.imf === "imf135_300";
   return (
+    src.find((p) => fiducial(p) && p.z_label === "z020" && p.pop_type === "bin" && !p.alpha_label) ||
+    src.find((p) => fiducial(p) && p.z_label === "z020" && p.pop_type === "bin") ||
     src.find((p) => p.z_label === "z020" && p.pop_type === "bin" && !p.alpha_label) ||
     src.find((p) => p.z_label === "z020" && p.pop_type === "bin") ||
     src[0] ||
@@ -66,12 +69,17 @@ function renderExamples(pops) {
       apiGet("/populations"),
     ]);
 
+    const showDemo = Boolean(meta.has_synthetic);
+    const demoHead = document.getElementById("col-demo");
+    if (demoHead) demoHead.hidden = !showDemo;
+
     summary.innerHTML =
       meta.releases
         .map((r) => `<span class="badge ok">${esc(r.version)} · ${r.n_populations} populations</span>`)
         .join(" ") +
-      (meta.has_synthetic ? ` <span class="badge warn">includes synthetic demo data</span>` : "");
+      (showDemo ? ` <span class="badge warn">includes synthetic demo data</span>` : "");
 
+    const cols = showDemo ? 9 : 8;
     popBody.innerHTML = pops.length
       ? pops
           .map(
@@ -84,17 +92,17 @@ function renderExamples(pops) {
           <td>${p.pop_type === "bin" ? "binary" : "single"}</td>
           <td>${p.alpha_label ? esc(p.alpha_label) : "—"}</td>
           <td class="wrap small muted">${(p.products || []).map(esc).join(", ") || "—"}</td>
-          <td>${p.is_synthetic ? demoBadge : ""}</td>
+          ${showDemo ? `<td>${p.is_synthetic ? demoBadge : ""}</td>` : ""}
         </tr>`,
           )
           .join("")
-      : '<tr><td colspan="9" class="muted">Nothing loaded on this instance.</td></tr>';
+      : `<tr><td colspan="${cols}" class="muted">Nothing loaded on this instance.</td></tr>`;
 
     renderExamples(pops);
   } catch {
     summary.innerHTML = '<span class="badge warn">database unavailable</span>';
     popBody.innerHTML =
-      '<tr><td colspan="9" class="muted">Could not reach the API.</td></tr>';
+      '<tr><td colspan="8" class="muted">Could not reach the API.</td></tr>';
     const host = document.getElementById("api-examples");
     if (host) host.textContent = "# Could not reach the API to build examples.";
   }

@@ -63,6 +63,15 @@ def test_tutorial_mentions_key_concepts(client):
     assert "Ten minutes of background" not in html
 
 
+def test_data_page_demo_note_follows_synthetic_rows(client, monkeypatch):
+    monkeypatch.setattr("bib.web.templating.has_synthetic_data", lambda: False)
+    assert "synthetic toy data" not in client.get("/data").text
+    monkeypatch.setattr("bib.web.templating.has_synthetic_data", lambda: True)
+    html = client.get("/data").text
+    assert "synthetic toy data" in html
+    assert "not BPASS output" in html
+
+
 def test_data_page_is_catalogue_not_ingest_guide(client):
     html = client.get("/data").text
     assert "bib ingest" not in html
