@@ -41,7 +41,8 @@ bpass_v2.2.1_imf_chab100.tar.gz
 ```
 
 Leave the `*_300`, `imf100_*`, `imf170_*`, and `imf135all_*` archives in the
-same folder if you have them — they are ignored.
+same folder if you have them — this manifest ignores them. Those grids are
+the separate load below.
 
 ```sh
 uv run bib ingest \
@@ -54,6 +55,32 @@ Spectra dominate the time (tens of minutes on a laptop + local Postgres).
 Re-runs skip populations that already exist and fill any products the
 manifest lists that are not yet in the database (for example `numbers`
 after a schema upgrade). Add `--replace` to rebuild a population from scratch.
+
+## Additional v2.2.1 IMFs
+
+`src/bib/ingest/sed-extra-imfs.yaml` loads the other v2.2.1 population grids:
+same metallicities, binary and single, and the same products as the 100 M☉
+load. v2.2.1 `imf135_300` is not the v2.3 alpha-enhanced grid of the same IMF
+code.
+
+| IMF | Meaning |
+|---|---|
+| `imf100_100` | Broken power-law, upper slope −1.00, \(M_\mathrm{up}=100\,M_\odot\) |
+| `imf100_300` | Same slope, \(M_\mathrm{up}=300\,M_\odot\) |
+| `imf135_300` | Fiducial slope −1.35, \(M_\mathrm{up}=300\,M_\odot\) |
+| `imf170_100` | Upper slope −1.70, \(M_\mathrm{up}=100\,M_\odot\) |
+| `imf170_300` | Same slope, \(M_\mathrm{up}=300\,M_\odot\) |
+| `imf_chab300` | Chabrier (2003), \(M_\mathrm{up}=300\,M_\odot\) |
+
+```sh
+uv run bib ingest \
+  --source ~/bpass_v2.2.1 \
+  --manifest src/bib/ingest/sed-extra-imfs.yaml
+```
+
+That is 6 × 2 × 13 = 156 populations. The 100 M☉ tarballs may share the
+directory; the manifest only opens archives whose names contain one of these
+six IMF codes.
 
 ## v2.3 limited spectral release
 
@@ -87,6 +114,23 @@ That is 1 IMF × 2 population types × 13 metallicities × 5 α grids = 130
 populations. On the public VM, source `~/.config/bib/env` first so the CLI
 uses `bib_app` rather than the default `bib` role. Restart gunicorn afterwards.
 
+## On the public VM
+
+Packed archives stay out of the git checkout:
+
+| directory | contents |
+|---|---|
+| `~/bpass_v2.2.1` | v2.2.1 IMF tarballs (`imf135_100`, `imf_chab100`, and the six above) |
+| `~/bpass_v2.3` | the five `bpass_v2.3.a*.tar.gz` packs |
+
+Run from `~/bib` after sourcing `~/.config/bib/env`. `bib ingest` is one
+database transaction: it commits only if the whole manifest succeeds.
+Home and PostgreSQL share one volume, so each directory also has a small
+driver script that is **not** in git. It writes a one-chunk manifest (one
+IMF, or one v2.3 alpha pack), runs `uv run --frozen --extra prod bib ingest`,
+and the v2.3 script deletes `<source>/.bib-extract` after each pack. Re-runs
+skip populations already in the database. After a load, `uv run bib info`.
+
 Afterward:
 
 ```sh
@@ -115,8 +159,8 @@ win over tarball members of the same name.
 
 ## The manifest
 
-Copy `src/bib/ingest/sed-100.yaml`, `src/bib/ingest/sed-v23.yaml`, or
-`src/bib/ingest/golden.yaml` and edit.
+Copy `src/bib/ingest/sed-100.yaml`, `src/bib/ingest/sed-extra-imfs.yaml`,
+`src/bib/ingest/sed-v23.yaml`, or `src/bib/ingest/golden.yaml` and edit.
 Structure (matches those files):
 
 ```yaml

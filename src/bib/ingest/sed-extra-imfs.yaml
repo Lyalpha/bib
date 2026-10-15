@@ -1,7 +1,10 @@
 # Additional BPASS v2.2.1 IMFs beyond the pedagogical 100 M☉ pair
 # (imf135_100 and imf_chab100, loaded by sed-100.yaml).
 #
-# Point --source at a directory that contains only these official tarballs:
+# Point --source at a directory of official IMF tarballs. On the public VM
+# that directory is ~/bpass_v2.2.1 (the 100 M☉ pair can sit in the same
+# folder; this manifest does not open those archives).
+#
 #   bpass_v2.2.1_imf100_100.tar.gz
 #   bpass_v2.2.1_imf100_300.tar.gz
 #   bpass_v2.2.1_imf135_300.tar.gz
@@ -9,10 +12,12 @@
 #   bpass_v2.2.1_imf170_300.tar.gz
 #   bpass_v2.2.1_imf_chab300.tar.gz
 #
-# One `bib ingest` call is a single database transaction. On a small disk,
-# run once per IMF (filter this file) so each commit is one 26-population grid.
+#   uv run bib ingest --source ~/bpass_v2.2.1 \
+#                     --manifest src/bib/ingest/sed-extra-imfs.yaml
 #
-#   uv run bib ingest --source ~/bpass-imf --manifest src/bib/ingest/sed-extra-imfs.yaml
+# One `bib ingest` commits only when the whole manifest succeeds. The VM
+# driver next to the tarballs runs this file once per IMF for that reason.
+# See docs/ingestion.md.
 
 releases:
   "2.2.1":
