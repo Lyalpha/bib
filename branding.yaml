@@ -36,7 +36,7 @@ colors:
   plot-bg: "#0e1428"     # plot paper background
 
 footer_note: >
-  bib is for a quick look at one SED or one stellar track in the released BPASS
-  data, and for reading those same numbers through the API. For scripted or
+  bib is for quick-look analysis and data-fetching of specific populations'
+  data through an API. For scripted or
   large-scale analysis, use hoki and the BPASS manuals and release papers.
   BPASS data are licensed CC BY-NC 4.0 by the BPASS team (J.J. Eldridge & E.R. Stanway).

@@ -5,8 +5,8 @@
 data products: interactive SEDs of simple stellar populations, synthetic AB
 photometry through bundled or user-supplied filters, and dust extinction of the SED.
 
-It is for a quick look at one SED, and for reading those
-numbers through the API. For scripted or large-scale analysis, use
+It is for quick-look analysis and data-fetching of specific populations'
+data through the API. For scripted or large-scale analysis, use
 [hoki](https://heloises.github.io/hoki/intro.html) and the BPASS manuals and
 release papers. BPASS data are licensed
 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) by the BPASS team
