@@ -3,7 +3,8 @@
 {% block content %}
 <div class="prose">
 
-<h1>A short tour of BPASS (and of this tool)</h1>
+<h1>A quick introduction to stellar population models and the explorer tools</h1>
+<p class="page-kicker">What an SSP is, and how to read the explorers.</p>
 
 <h2>1 · What population synthesis does</h2>
 <p>
@@ -86,13 +87,18 @@
   <li>Supernovae and compact-object mergers happen <strong>later and in different
       numbers</strong> than single-star models predict.</li>
 </ul>
-<h3>Dust</h3>
+<h3>Dust extinction</h3>
 <p>
-  Interstellar dust dims and reddens starlight before it reaches us. The SSP Explorer can
-  apply four attenuation/extinction laws — CCM89 and F99 (Milky Way), Gordon 03 (SMC bar) and
-  Calzetti 00 (starbursts) — parameterised by E(B−V) and, where applicable, R<sub>V</sub>.
-  Outside a law's validated wavelength range the curve is held at its boundary value and the
-  affected region is flagged, so you always know when you are extrapolating.
+  Choosing a curve and E(B−V) extinguishes the SED. Each wavelength is multiplied
+  by 10<sup>−0.4 A<sub>λ</sub></sup>, as if a dust screen sat in front of the population.
+  That is not attenuation through a mixture of stars and dust, and the light removed
+  from the spectrum is not reprocessed into the infrared.
+  The four curves are CCM89 and F99 (Milky Way), Gordon 03 (SMC bar) and Calzetti 00
+  (starbursts), with R<sub>V</sub> where the curve allows it.
+  Calzetti et al. published their curve as an attenuation law; here it is used the same
+  way as the others, as a screen.
+  Outside a curve's validated wavelength range the value is held at its boundary and
+  the affected region is flagged, so you can see when you are extrapolating.
 </p>
 
 <h2>3 · Using the SSP Explorer</h2>
@@ -110,53 +116,15 @@
       to add the live SSP to every pin at the ages shown: a mix of visible spectra,
       not a star-formation history. <strong>Sync visible spectra ages</strong> locks
       every overlay to the playhead.</li>
-  <li><strong>Apply dust or rescale mass</strong> — mass is a pure vertical shift
-      (spectra and star counts scale linearly with formed mass); dust reshapes the SED only.</li>
+  <li><strong>Extinguish the SED, or rescale mass</strong> — mass is a pure vertical shift
+      (spectra and star counts scale linearly with formed mass). Dust extinction multiplies
+      the SED by the curve and leaves the other panels alone. Removed light is not reprocessed.</li>
   <li><strong>Overlay filters and read magnitudes</strong>. The photometry table (collapsible,
       below the SED) gives AB magnitudes (absolute, i.e. at 10&nbsp;pc) through the bundled
       filter sets for the live SED and every pinned one. Upload any two-column
       wavelength/transmission file to get magnitudes through your own filter.</li>
   <li><strong>Export</strong> the SED plot as PNG, or the spectrum as CSV/JSON at full native
       resolution.</li>
-</ol>
-
-<h2>4 · Using the Star Explorer</h2>
-<p>
-  The <a href="/star">Star Explorer</a> leaves populations behind and follows <em>individual</em>
-  stellar models — the raw material of the synthesis. The Hertzsprung–Russell diagram
-  (temperature vs. luminosity) is the main plot; the readout and binary visualizer
-  show the rest of the star.
-</p>
-<ol>
-  <li><strong>Choose a model</strong>: filter by metallicity and single/primary/secondary,
-      then pick from the curated list. Each entry says why it is interesting.</li>
-  <li><strong>Press play</strong>. The marker traces the evolutionary track while the readout
-      updates the star's age, mass, radius, core masses, surface composition, mass-loss rate
-      and — for binaries — companion mass, orbital period and separation. Playback follows the
-      model's own timesteps, so it naturally lingers where evolution is fast and
-      interesting.</li>
-  <li><strong>Jump to events</strong>. Chips below the plot mark detected milestones — ZAMS,
-      main-sequence turnoff, core exhaustions, giant branches, Wolf–Rayet stripping,
-      Roche-lobe overflow, common-envelope plunges, thermal pulses. Click one to jump the
-      clock there.</li>
-  <li><strong>Watch the binary panel</strong>. Next to the HRD, the system is drawn to a
-      common scale: separation, stellar radii and orbital motion all track the model
-      (orbit speed is compressed for display). The visual language:
-      <ul>
-        <li><strong>Colour</strong> — effective temperature, mapped through a blackbody
-            palette (red ≈ 3,000&nbsp;K → blue-white ≳ 20,000&nbsp;K).</li>
-        <li><strong>Size</strong> — stellar radius, to scale with the separation.</li>
-        <li><strong>Soft halo</strong> — strong stellar wind (the halo grows with the
-            mass-loss rate).</li>
-        <li><strong>Teardrop + particle stream</strong> — Roche-lobe overflow feeding the
-            companion.</li>
-        <li><strong>Translucent envelope around both stars</strong> — common-envelope
-            evolution; watch the separation shrink dramatically.</li>
-      </ul>
-      Single-star models show one star with the same colour/size/wind rules.</li>
-  <li><strong>Population backdrop</strong>: optionally shade the HRD with the density of an
-      entire population at matching age — see where your one star sits among its million
-      siblings.</li>
 </ol>
 
 <div class="card">
@@ -174,7 +142,7 @@
   </p>
 </div>
 
-<h2>5 · Units and conventions</h2>
+<h2>4 · Units and conventions</h2>
 <ul>
   <li>SED flux: solar luminosities per angstrom (L<sub>☉</sub>/Å) for a population of
       10<sup>6</sup>&nbsp;M<sub>☉</sub> formed, rescalable in the UI; wavelengths in Å
@@ -186,7 +154,7 @@
   <li>Metallicity Z: initial mass fraction in metals; BPASS takes Z<sub>☉</sub> = 0.020.</li>
 </ul>
 
-<h2>6 · Reading list</h2>
+<h2>5 · Reading list</h2>
 <ul class="cites">
   <li><a href="https://bpass.auckland.ac.nz" target="_blank" rel="noopener">BPASS at Auckland</a>
       and the <a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/"
@@ -215,7 +183,6 @@
 
 <div class="cta-row">
   <a class="btn primary" href="/ssp">Try the SSP Explorer</a>
-  <a class="btn accent" href="/star">Try the Star Explorer</a>
 </div>
 
 </div>

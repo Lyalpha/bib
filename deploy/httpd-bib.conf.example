@@ -1,0 +1,10 @@
+# Example Apache *vhost* reverse-proxy fragment (when .htaccess [P] is
+# not allowed). bib/gunicorn binds 127.0.0.1:8001 under systemd --user.
+# Prefer deploy/htaccess.example in the document root when that works.
+
+LimitRequestBody 2097152
+
+ProxyPreserveHost On
+RequestHeader set X-Forwarded-Proto "https"
+ProxyPass / http://127.0.0.1:8001/
+ProxyPassReverse / http://127.0.0.1:8001/

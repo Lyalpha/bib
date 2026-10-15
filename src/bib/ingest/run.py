@@ -3,12 +3,21 @@
 ``bib ingest --source DIR`` walks a directory of downloaded BPASS products,
 loads everything requested by the manifest (default: the bundled golden
 subset), records provenance (source path + sha256), and is idempotent —
-existing items are skipped unless ``--replace`` is given.
+existing populations are skipped unless ``--replace`` is given;
+missing products listed in the manifest are filled in on a re-run.
+
+``--source`` may be a folder of unpacked ``.dat`` / ``.dat.gz`` files, or the
+official IMF tarballs (``bpass_v2.2.1_imf*.tar.gz``, ``bpass_v2.3.a*.tar.gz``).
+Matching archives are opened only when a requested product is not already on
+disk; members are extracted into ``<source>/.bib-extract/`` and reused on
+later runs.
 """
 
 from __future__ import annotations
 
 import hashlib
+import tarfile
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -35,6 +44,7 @@ _PRODUCT_PARSERS = {
     "supernova": parsers.parse_supernova,
     "yields": parsers.parse_yields,
     "mlratio": parsers.parse_mlratio,
+    "numbers": parsers.parse_star_counts,
 }
 
 _COLOURS_FIELDS = [
@@ -50,6 +60,21 @@ _SN_FIELDS = [
 ]
 _YIELDS_FIELDS = ["wind_h", "wind_he", "wind_z", "wind_energy", "sn_energy", "sn_h", "sn_he", "sn_z"]
 _MLRATIO_FIELDS = ["ml_k", "ml_v"]
+_STAR_COUNT_FIELDS = [
+    "n_o_hi", "n_of_hi", "n_b_hi", "n_a_hi", "n_ysg_hi",
+    "n_k_hi", "n_m_hi", "n_wnh_hi", "n_wn_hi", "n_wc_hi",
+    "n_o_lo", "n_of_lo", "n_b_lo", "n_a_lo", "n_ysg_lo",
+    "n_k_lo", "n_m_lo", "n_wnh_lo", "n_wn_lo", "n_wc_lo",
+]
+_PRODUCT_MODELS = {
+    "colours": m.Colours,
+    "ionizing": m.Ionizing,
+    "starmass": m.StarMass,
+    "supernova": m.SnRates,
+    "yields": m.Yields,
+    "mlratio": m.MLRatio,
+    "numbers": m.StarCounts,
+}
 
 _STEP_FIELDS = [
     "age_yr", "log_r1", "log_t1", "log_l1", "m1", "he_core", "co_core", "one_core",
@@ -73,22 +98,36 @@ class IngestStats:
         console.print(f"  [yellow]warning:[/yellow] {message}")
 
 
-class FileIndex:
-    """One recursive scan of the source directory, then O(1) name lookups."""
+def _is_tar_archive(path: Path) -> bool:
+    name = path.name.lower()
+    return name.endswith(".tar.gz") or name.endswith(".tgz") or name.endswith(".tar")
 
-    def __init__(self, root: Path):
+
+class FileIndex:
+    """Name lookup over unpacked files, then IMF product tarballs.
+
+    ``archive_needles`` (IMF labels, plus ``v2.3`` when the manifest asks for
+    alpha grids) restrict which ``.tar`` / ``.tar.gz`` archives are opened, so a
+    full-release download folder does not get every 500 MB tarball decompressed.
+    """
+
+    def __init__(self, root: Path, archive_needles: Iterable[str] | None = None):
         self.root = root
+        self.extract_dir = root / ".bib-extract"
+        self.archive_needles = {n for n in (archive_needles or []) if n}
         self.by_name: dict[str, list[Path]] = {}
+        self._origin: dict[Path, str] = {}
+        self._archives_scanned: set[Path] = set()
         for path in root.rglob("*"):
             if path.is_file():
                 self.by_name.setdefault(path.name, []).append(path)
 
     def find(self, *names: str) -> Path | None:
-        for name in names:
-            for candidate in (name, name + ".gz"):
-                if candidate in self.by_name:
-                    return sorted(self.by_name[candidate])[0]
-        return None
+        hit = self._lookup_loose(*names)
+        if hit is not None:
+            return hit
+        self.prefetch(names)
+        return self._lookup_loose(*names)
 
     def find_all_suffixed(self, prefix: str, suffix: str) -> list[Path]:
         out = []
@@ -96,6 +135,111 @@ class FileIndex:
             if name.startswith(prefix) and name.endswith(suffix):
                 out.extend(paths)
         return sorted(out)
+
+    def provenance(self, path: Path) -> str:
+        if path in self._origin:
+            return self._origin[path]
+        try:
+            return str(path.relative_to(self.root))
+        except ValueError:
+            return str(path)
+
+    def prefetch(self, names: Iterable[str], console: Console | None = None) -> None:
+        """Extract any missing basenames from matching archives, one pass each."""
+        missing = {n for n in self._wanted_basenames(names) if n not in self.by_name}
+        if not missing:
+            return
+        archives = [a for a in self._matching_archives() if a not in self._archives_scanned]
+        if not archives:
+            return
+        self.extract_dir.mkdir(parents=True, exist_ok=True)
+        for archive in archives:
+            if console:
+                console.print(f"  reading [bold]{archive.name}[/bold] for population products...")
+            extracted = self._extract_from_archive(archive, missing)
+            self._archives_scanned.add(archive)
+            if console and extracted:
+                console.print(f"    extracted {extracted} file(s)")
+            if not missing:
+                break
+
+    def _wanted_basenames(self, names: Iterable[str]) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        for name in names:
+            for candidate in (name, name + ".gz"):
+                if candidate not in seen:
+                    seen.add(candidate)
+                    out.append(candidate)
+        return out
+
+    def _lookup_loose(self, *names: str) -> Path | None:
+        for name in names:
+            for candidate in (name, name + ".gz"):
+                hits = self.by_name.get(candidate)
+                if hits:
+                    return sorted(hits)[0]
+        return None
+
+    def _matching_archives(self) -> list[Path]:
+        out: list[Path] = []
+        for path in sorted(self.root.rglob("*")):
+            if not path.is_file() or not _is_tar_archive(path):
+                continue
+            if path.parent == self.extract_dir:
+                continue
+            if self.archive_needles and not any(n in path.name for n in self.archive_needles):
+                continue
+            out.append(path)
+        return out
+
+    def _register_extracted(self, dest: Path, archive: Path, member: str) -> None:
+        self.by_name.setdefault(dest.name, []).append(dest)
+        self._origin[dest] = self._tar_provenance(archive, member)
+
+    def _tar_provenance(self, archive: Path, member: str) -> str:
+        try:
+            rel = archive.relative_to(self.root)
+        except ValueError:
+            rel = archive
+        return f"{rel}::{Path(member).name}"
+
+    def _claim(self, missing: set[str], basename: str) -> bool:
+        if basename in missing:
+            missing.discard(basename)
+            if basename.endswith(".gz"):
+                missing.discard(basename[:-3])
+            return True
+        if basename.endswith(".gz") and basename[:-3] in missing:
+            missing.discard(basename[:-3])
+            missing.discard(basename)
+            return True
+        return False
+
+    def _extract_from_archive(self, archive: Path, missing: set[str]) -> int:
+        extracted = 0
+        with tarfile.open(archive, "r:*") as tf:
+            for info in tf:
+                if not info.isfile():
+                    continue
+                base = Path(info.name).name
+                dest = self.extract_dir / base
+                already = dest.exists() and dest.stat().st_size > 0
+                if already:
+                    if self._claim(missing, base) or dest.name not in self.by_name:
+                        self._register_extracted(dest, archive, info.name)
+                    continue
+                if not self._claim(missing, base):
+                    continue
+                fh = tf.extractfile(info)
+                if fh is None:
+                    continue
+                dest.write_bytes(fh.read())
+                self._register_extracted(dest, archive, info.name)
+                extracted += 1
+                if not missing:
+                    break
+        return extracted
 
 
 def _sha256(path: Path) -> str:
@@ -106,14 +250,59 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _product_filenames(product: str, opt: str, imf: str, z: str, alpha: str | None) -> list[str]:
+def _product_filenames(
+    product: str,
+    opt: str,
+    imf: str,
+    z: str,
+    alpha: str | None,
+) -> list[str]:
+    """Basenames for a BPASS product.
+
+    v2.2.1: ``spectra-bin-imf135_100.z020.dat``.
+    v2.3: ``spectra-bin-imf135_300.a+00.z020.dat`` (alpha tag next to Z;
+    both orders are accepted).
+    """
     if alpha is None:
         return [f"{product}-{opt}-{imf}.{z}.dat"]
-    # v2.3 naming places the alpha tag next to the metallicity; accept both orders.
     return [
         f"{product}-{opt}-{imf}.{alpha}.{z}.dat",
         f"{product}-{opt}-{imf}.{z}.{alpha}.dat",
     ]
+
+
+def _archive_needles(spec: dict) -> set[str]:
+    needles: set[str] = set()
+    has_alpha = False
+    for pop_spec in spec.get("populations", []):
+        needles.add(pop_spec["imf"])
+        if pop_spec.get("alphas"):
+            has_alpha = True
+    for hrs_spec in spec.get("hrs", []):
+        needles.add(hrs_spec["imf"])
+    # Official v2.3 packs are named bpass_v2.3.a+00.tar.gz, not imf*.
+    if has_alpha:
+        needles.add("v2.3")
+    return needles
+
+
+def _needed_product_names(spec: dict) -> list[str]:
+    names: list[str] = []
+    for pop_spec in spec.get("populations", []):
+        imf = pop_spec["imf"]
+        products = pop_spec.get("products", ["spectra"])
+        alphas: list[str | None] = pop_spec.get("alphas") or [None]
+        for opt in pop_spec.get("pop_types", ["bin"]):
+            for z in pop_spec.get("metallicities", []):
+                for alpha in alphas:
+                    for product in products:
+                        names.extend(_product_filenames(product, opt, imf, z, alpha))
+    for hrs_spec in spec.get("hrs", []):
+        imf = hrs_spec["imf"]
+        for opt in hrs_spec.get("pop_types", ["bin"]):
+            for z in hrs_spec.get("metallicities", []):
+                names.append(f"hrs-{opt}-{imf}.{z}.dat")
+    return names
 
 
 def _nan_to_none(value: float) -> float | None:
@@ -194,8 +383,15 @@ def _ingest_population(
     existing = _find_population(session, release.id, imf, z, opt, alpha)
     if existing is not None:
         if not replace:
-            stats.skipped_populations += 1
-            console.print(f"  [dim]{tag}: already ingested — skipped[/dim]")
+            added = _fill_missing_products(
+                session, console, stats, index, tag, existing, products, opt, imf, z, alpha
+            )
+            if added:
+                stats.populations += 1
+                console.print(f"  {tag}: filled {', '.join(added)}")
+            else:
+                stats.skipped_populations += 1
+                console.print(f"  [dim]{tag}: already ingested — skipped[/dim]")
             return
         session.execute(delete(m.Population).where(m.Population.id == existing.id))
         session.flush()
@@ -228,7 +424,7 @@ def _ingest_population(
         alpha_value=ALPHA_VALUES.get(alpha) if alpha else None,
         native_grid_id=native_grid.id,
         display_grid_id=display_grid.id,
-        source_file=str(spectra_path.relative_to(index.root)),
+        source_file=index.provenance(spectra_path),
         sha256=_sha256(spectra_path),
         is_synthetic=False,
         extra={"products": []},
@@ -263,25 +459,91 @@ def _ingest_population(
     for product in products:
         if product == "spectra":
             continue
-        parser = _PRODUCT_PARSERS.get(product)
-        if parser is None:
-            stats.warn(console, f"{tag}: unknown product '{product}' in manifest")
-            continue
-        path = index.find(*_product_filenames(product, opt, imf, z, alpha))
-        if path is None:
-            stats.warn(console, f"{tag}: {product} file not found — skipped")
-            continue
-        try:
-            table = parser(path)
-        except ParseError as exc:
-            stats.warn(console, f"{tag}: {exc}")
-            continue
-        _insert_product_rows(session, population.id, product, table)
-        loaded_products.append(product)
+        if _try_insert_product(
+            session, console, stats, index, tag, population.id, product, opt, imf, z, alpha
+        ):
+            loaded_products.append(product)
 
     population.extra = {"products": loaded_products}
     session.flush()
     stats.populations += 1
+
+
+def _product_present(session: Session, population_id: int, product: str) -> bool:
+    model = _PRODUCT_MODELS.get(product)
+    if model is None:
+        return True
+    return (
+        session.scalar(
+            select(model.population_id).where(model.population_id == population_id).limit(1)
+        )
+        is not None
+    )
+
+
+def _try_insert_product(
+    session: Session,
+    console: Console,
+    stats: IngestStats,
+    index: FileIndex,
+    tag: str,
+    population_id: int,
+    product: str,
+    opt: str,
+    imf: str,
+    z: str,
+    alpha: str | None,
+) -> bool:
+    parser = _PRODUCT_PARSERS.get(product)
+    if parser is None:
+        stats.warn(console, f"{tag}: unknown product '{product}' in manifest")
+        return False
+    path = index.find(*_product_filenames(product, opt, imf, z, alpha))
+    if path is None:
+        stats.warn(console, f"{tag}: {product} file not found — skipped")
+        return False
+    try:
+        table = parser(path)
+    except ParseError as exc:
+        stats.warn(console, f"{tag}: {exc}")
+        return False
+    _insert_product_rows(session, population_id, product, table)
+    return True
+
+
+def _fill_missing_products(
+    session: Session,
+    console: Console,
+    stats: IngestStats,
+    index: FileIndex,
+    tag: str,
+    population: m.Population,
+    products: list[str],
+    opt: str,
+    imf: str,
+    z: str,
+    alpha: str | None,
+) -> list[str]:
+    extra = dict(population.extra or {})
+    loaded = list(extra.get("products") or ["spectra"])
+    added: list[str] = []
+    for product in products:
+        if product == "spectra":
+            continue
+        if _product_present(session, population.id, product):
+            if product not in loaded:
+                loaded.append(product)
+            continue
+        if _try_insert_product(
+            session, console, stats, index, tag, population.id, product, opt, imf, z, alpha
+        ):
+            added.append(product)
+            if product not in loaded:
+                loaded.append(product)
+    if added or loaded != list((population.extra or {}).get("products") or []):
+        population.extra = {**extra, "products": loaded}
+        session.flush()
+    return added
 
 
 def _rows_from_table(
@@ -327,6 +589,8 @@ def _insert_product_rows(
         session.execute(insert(m.Yields), _rows_from_table(population_id, table, _YIELDS_FIELDS))
     elif product == "mlratio":
         session.execute(insert(m.MLRatio), _rows_from_table(population_id, table, _MLRATIO_FIELDS))
+    elif product == "numbers":
+        session.execute(insert(m.StarCounts), _rows_from_table(population_id, table, _STAR_COUNT_FIELDS))
 
 
 # ---------------------------------------------------------------------------
@@ -557,7 +821,10 @@ def run_ingest(
 
     console.print(f"[bold]bib ingest[/bold] — source {source}, manifest {manifest_path.name}")
     console.print("  indexing source directory...")
-    index = FileIndex(source)
+    index = FileIndex(source, archive_needles=_archive_needles(spec))
+    needed = _needed_product_names(spec)
+    if needed:
+        index.prefetch(needed, console=console)
     stats = IngestStats()
 
     with session_scope() as session:

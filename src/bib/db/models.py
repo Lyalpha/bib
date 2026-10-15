@@ -22,6 +22,7 @@ from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -276,6 +277,37 @@ class MLRatio(AgeRowMixin, Base):
     ml_v: Mapped[float]
 
 
+class StarCounts(AgeRowMixin, Base):
+    """Census of spectral types at one age (per 10^6 Msun formed).
+
+    Types follow Eldridge et al. (2017) table 3. ``_hi`` is log L/Lsun > 4.9,
+    ``_lo`` is the fainter bin.
+    """
+
+    __tablename__ = "star_counts"
+
+    n_o_hi: Mapped[float]
+    n_of_hi: Mapped[float]
+    n_b_hi: Mapped[float]
+    n_a_hi: Mapped[float]
+    n_ysg_hi: Mapped[float]
+    n_k_hi: Mapped[float]
+    n_m_hi: Mapped[float]
+    n_wnh_hi: Mapped[float]
+    n_wn_hi: Mapped[float]
+    n_wc_hi: Mapped[float]
+    n_o_lo: Mapped[float]
+    n_of_lo: Mapped[float]
+    n_b_lo: Mapped[float]
+    n_a_lo: Mapped[float]
+    n_ysg_lo: Mapped[float]
+    n_k_lo: Mapped[float]
+    n_m_lo: Mapped[float]
+    n_wnh_lo: Mapped[float]
+    n_wn_lo: Mapped[float]
+    n_wc_lo: Mapped[float]
+
+
 class HrdGrid(AgeRowMixin, Base):
     """HR-diagram occupation-probability grid at one age.
 
@@ -452,6 +484,19 @@ class Filter(Base):
     __table_args__ = (
         CheckConstraint("detector_type IN ('photon', 'energy')", name="detector_valid"),
     )
+
+
+class SiteDailyStat(Base):
+    """Anonymised daily HTML hit counts (path only; no IP/UA)."""
+
+    __tablename__ = "site_daily_stat"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    day: Mapped[datetime.date] = mapped_column(Date)
+    path: Mapped[str] = mapped_column(String(256))
+    hits: Mapped[int] = mapped_column(default=0, server_default="0")
+
+    __table_args__ = (UniqueConstraint("day", "path", name="uq_site_daily_stat_day_path"),)
 
 
 AGE_INDEX_TABLES = [Sed, Colours, Ionizing, StarMass, SnRates, Yields, MLRatio, HrdGrid]

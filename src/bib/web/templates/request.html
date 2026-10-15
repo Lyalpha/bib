@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Request data{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<h1 style="margin:0;">Request data</h1>
+<p class="page-kicker is-one-line">Build a query to fetch a simple stellar population data: SED, photometry or population properties.</p>
+
+<div id="error-box" class="synthetic-banner" style="border-radius:10px;" hidden></div>
+
+<div class="explorer request-layout">
+  <aside class="controls card tight">
+    <div class="recipe-list" id="recipe-list"></div>
+
+    <hr style="margin:0.2rem 0;">
+
+    <div class="control-group">
+      <label>Release</label>
+      <select id="sel-release"></select>
+    </div>
+    <div class="control-group">
+      <label>Initial mass function</label>
+      <select id="sel-imf"></select>
+    </div>
+    <div class="control-group">
+      <label>Population type</label>
+      <fieldset class="seg" id="seg-poptype">
+        <label><input type="radio" name="poptype" value="bin" checked>Binary</label>
+        <label><input type="radio" name="poptype" value="sin">Single</label>
+      </fieldset>
+    </div>
+    <div class="control-group" id="grp-z">
+      <label>Metallicity</label>
+      <select id="sel-z"></select>
+      <label class="plot-toggle" id="lab-all-z" hidden>
+        <input type="checkbox" id="chk-all-z"> All loaded metallicities
+      </label>
+    </div>
+    <div class="control-group" id="grp-alpha" hidden>
+      <label>[α/Fe] enhancement</label>
+      <select id="sel-alpha"></select>
+    </div>
+
+    <div class="control-group">
+      <label>Age</label>
+      <label class="plot-toggle">
+        <input type="checkbox" id="chk-all-ages"> Every grid age (6.0–11.0)
+      </label>
+      <div class="control-inline" id="age-row">
+        <input type="range" id="sl-age" min="0" max="50" step="1" value="20" style="--fill: 40%">
+        <output id="out-age">8.0</output>
+      </div>
+    </div>
+
+    <div class="control-group" id="grp-dust">
+      <label>Dust extinction <span class="hint" title="Extinguishes the SED: the spectrum is multiplied by this curve at the chosen E(B−V). A foreground screen, not attenuation, and the removed light is not reprocessed.">?</span></label>
+      <select id="sel-dust">
+        <option value="">No extinction</option>
+      </select>
+    </div>
+    <div class="control-group" id="grp-ebv" hidden>
+      <label>E(B−V)</label>
+      <div class="control-inline">
+        <input type="range" id="sl-ebv" min="0" max="2" step="0.02" value="0.1" style="--fill: 5%">
+        <output id="out-ebv">0.10</output>
+      </div>
+    </div>
+    <div class="control-group" id="grp-rv" hidden>
+      <label>R<sub>V</sub></label>
+      <div class="control-inline">
+        <input type="range" id="sl-rv" min="2" max="6" step="0.1" value="3.1" style="--fill: 27.5%">
+        <output id="out-rv">3.1</output>
+      </div>
+    </div>
+
+    <div class="control-group" id="grp-redshift">
+      <label>Redshift z</label>
+      <div class="control-inline">
+        <input type="range" id="sl-redshift" min="0" max="300" step="1" value="0" style="--fill: 0%">
+        <output id="out-redshift">0.00</output>
+      </div>
+      <span class="small muted" id="dl-note">Rest frame · photometry at 10 pc</span>
+    </div>
+
+    <div class="control-group" id="grp-filters" hidden>
+      <label>Filters</label>
+      <select id="sel-filters">
+        <option value="">All bundled filters</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>Units</label>
+      <fieldset class="seg" id="seg-units">
+        <label><input type="radio" name="units" value="native" checked>As published</label>
+        <label><input type="radio" name="units" value="physical">Physical</label>
+      </fieldset>
+      <p class="small muted" id="units-note"></p>
+    </div>
+
+    <div class="control-group" id="grp-mass" hidden>
+      <label>Formed mass (M<sub>☉</sub>)</label>
+      <div class="control-inline">
+        <input type="range" id="sl-mass" min="5" max="10" step="0.1" value="6" style="--fill: 20%">
+        <output id="out-mass">10⁶</output>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>File format</label>
+      <fieldset class="seg" id="seg-format">
+        <label><input type="radio" name="format" value="csv" checked>CSV</label>
+        <label><input type="radio" name="format" value="json">JSON</label>
+        <label><input type="radio" name="format" value="ecsv">ECSV</label>
+        <label><input type="radio" name="format" value="ascii">ASCII</label>
+      </fieldset>
+      <p class="small muted" id="format-note"></p>
+    </div>
+  </aside>
+
+  <section class="request-preview">
+    <div class="card">
+      <h2 class="panel-title">Your request</h2>
+      <p class="panel-sub" id="request-sentence"></p>
+      <dl class="request-meta" id="request-meta"></dl>
+      <div class="row" style="margin-top:0.8rem;">
+        <button type="button" class="btn primary" id="btn-download">Download</button>
+        <button type="button" class="btn ghost" id="btn-copy">Copy URL</button>
+      </div>
+      <p class="small muted request-url-line">
+        <span>API</span> <code id="request-url"></code>
+      </p>
+    </div>
+    <div class="card" style="margin-top:0.8rem;">
+      <h2 class="panel-title">Columns and units</h2>
+      <div class="table-wrap wide">
+        <table class="data" id="col-table">
+          <colgroup>
+            <col>
+            <col class="col-unit">
+            <col>
+          </colgroup>
+          <thead><tr><th>Column</th><th>Unit</th><th>Meaning</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="/static/js/request.js?v=9"></script>
+{% endblock %}

@@ -1,11 +1,12 @@
-"""Dust attenuation/extinction of SEDs.
+"""Foreground-screen extinction of an SED.
 
-Laws are provided by the astropy-affiliated ``dust_extinction`` package.
-Each law is only defined over a finite wavelength window; outside it we clamp
-the curve at its boundary values (flat extrapolation) so the returned SED is
-always finite. The validity window is returned with every result and the UI
-shades the extrapolated regions — this behaviour is documented in the science
-notes.
+The spectrum is multiplied by 10^(-0.4 A_λ). That removes light from the
+plotted SED. It is not a mixed star–dust attenuation, and the removed light
+is not re-emitted. Laws are provided by the astropy-affiliated
+``dust_extinction`` package. Each law is only defined over a finite wavelength
+window; outside it we clamp the curve at its boundary values (flat
+extrapolation) so the returned SED is always finite. The validity window is
+returned with every result and the UI shades the extrapolated regions.
 """
 
 from __future__ import annotations
@@ -64,7 +65,7 @@ DUST_LAWS: dict[str, DustLaw] = {
     ),
     "calzetti00": DustLaw(
         "calzetti00", "Starburst — Calzetti 00",
-        "Calzetti et al. (2000) attenuation for starburst galaxies.",
+        "Calzetti et al. (2000) curve, applied here as a foreground screen on the SED.",
         4.05, 4.05, 0.455, 8.33,
     ),
     "smc": DustLaw(
@@ -105,10 +106,11 @@ def apply_dust(
     ebv: float,
     rv: float | None = None,
 ) -> DustResult:
-    """Attenuate an SED by E(B-V) using the chosen law.
+    """Extinguish an SED by E(B-V): multiply by 10^(-0.4 A_λ).
 
     Outside the law's validity window the extinction curve is clamped at its
     boundary value (flat extrapolation). E(B-V) <= 0 returns the input.
+    Removed light is not re-emitted.
     """
     law = DUST_LAWS[law_key]
     rv_eff = law.fixed_rv if law.fixed_rv is not None else (rv or law.default_rv)

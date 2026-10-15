@@ -88,6 +88,15 @@ def test_parse_colours(tmp_path):
     assert parsers.parse_colours(path).shape == (51, 22)
 
 
+def test_parse_colours_ignores_trailing_columns(tmp_path):
+    table = aged_table(26)
+    table[:, 22:] = 99.0
+    path = write(tmp_path / "colours.dat", table)
+    parsed = parsers.parse_colours(path)
+    assert parsed.shape == (51, 22)
+    assert not np.any(parsed[:, 1:] == 99.0)
+
+
 def test_parse_colours_bad_age_column(tmp_path):
     data = aged_table(22)
     data[:, 0] += 0.5
@@ -112,6 +121,18 @@ def test_parse_supernova_yields_mlratio(tmp_path):
     assert parsers.parse_supernova(write(tmp_path / "sn.dat", aged_table(18))).shape == (51, 18)
     assert parsers.parse_yields(write(tmp_path / "y.dat", aged_table(9))).shape == (51, 9)
     assert parsers.parse_mlratio(write(tmp_path / "ml.dat", aged_table(3))).shape == (51, 3)
+
+
+def test_parse_star_counts(tmp_path):
+    path = write(tmp_path / "numbers.dat", aged_table(21))
+    assert parsers.parse_star_counts(path).shape == (51, 21)
+
+
+def test_parse_mlratio_skips_text_header(tmp_path):
+    path = tmp_path / "mlratio.dat"
+    body = write(tmp_path / "_ml_body.dat", aged_table(3)).read_bytes()
+    path.write_bytes(b"    log(age) M/L(K band) M/L(V band)\n" + body)
+    assert parsers.parse_mlratio(path).shape == (51, 3)
 
 
 def test_parse_hrs_rejects_wrong_shape(tmp_path):

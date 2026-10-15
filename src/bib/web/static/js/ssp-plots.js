@@ -89,16 +89,23 @@ function yAxisRange(ysList, yLog) {
   return [Math.min(0, lo - pad), hi + pad];
 }
 
-function vline(logAge, color) {
-  return {
+/** Solid age rule with a contrasting edge, so it is not another dashed series. */
+function ageMarker(logAge, color) {
+  const ink = color || "#5aa9ff";
+  const edge = ink.toLowerCase() === "#ffffff" ? "rgba(0,0,0,0.72)" : "rgba(255,255,255,0.78)";
+  const geom = {
     type: "line",
     x0: logAge,
     x1: logAge,
     y0: 0,
     y1: 1,
     yref: "paper",
-    line: { color, width: 1.45, dash: "dash" },
+    layer: "above",
   };
+  return [
+    { ...geom, line: { color: edge, width: 4.2 } },
+    { ...geom, line: { color: ink, width: 1.35 } },
+  ];
 }
 
 function pinLogAge(pin) {
@@ -126,30 +133,38 @@ function pinAgeLines(state) {
 
 function playheadShapes(logAge, color, extraLines) {
   const accent = color || css("--brand-primary") || "#5aa9ff";
-  const shapes = [vline(logAge, accent)];
+  const shapes = ageMarker(logAge, accent);
   for (const extra of extraLines || []) {
-    shapes.push(vline(extra.logAge, extra.color));
+    shapes.push(...ageMarker(extra.logAge, extra.color));
   }
   return shapes;
 }
 
 function playheadRelayout(logAge) {
-  return { "shapes[0].x0": logAge, "shapes[0].x1": logAge };
+  return {
+    "shapes[0].x0": logAge,
+    "shapes[0].x1": logAge,
+    "shapes[1].x0": logAge,
+    "shapes[1].x1": logAge,
+  };
 }
 
-function plotTheme(title, yTitle, logAge, yLog, yRange, shapes, linkedLog, hoverY) {
+function plotTheme(title, yTitle, logAge, yLog, yRange, shapes, linkedLog, hoverY, panelId) {
   const text = css("--brand-text") || "#e7ecf3";
   const grid = PLOT_GRID;
-  const ySpan = yRange ? yRange[1] - yRange[0] : 6;
+  const lock = auxLocks.get(`${panelId}-plot`) || {};
+  const xRange = lock.xaxis || [5.95, UI_MAX_LOG_AGE + 0.05];
+  const yUsed = lock.yaxis || yRange;
+  const ySpan = yUsed ? yUsed[1] - yUsed[0] : 6;
   const layout = {
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { color: text, size: 12 },
     margin: { l: 70, r: linkedLog ? 78 : 16, t: 8, b: 64 },
-    uirevision: "ssp-aux-v8",
+    uirevision: "ssp-aux-v10",
     xaxis: {
       title: { text: "log<sub>10</sub>(age / yr)", standoff: 14 },
-      range: [5.95, 11.05],
+      range: xRange,
       autorange: false,
       gridcolor: grid,
       gridwidth: 1,
@@ -159,7 +174,7 @@ function plotTheme(title, yTitle, logAge, yLog, yRange, shapes, linkedLog, hover
     yaxis: {
       type: yLog ? "log" : "linear",
       title: { text: yTitle, standoff: 8 },
-      range: yRange,
+      range: yUsed,
       autorange: false,
       gridcolor: grid,
       gridwidth: 1,
@@ -178,7 +193,7 @@ function plotTheme(title, yTitle, logAge, yLog, yRange, shapes, linkedLog, hover
     layout.yaxis2 = {
       type: "log",
       title: { text: linkedLog.title, standoff: 8 },
-      range: [yRange[0] - linkedLog.logOffset, yRange[1] - linkedLog.logOffset],
+      range: [yUsed[0] - linkedLog.logOffset, yUsed[1] - linkedLog.logOffset],
       autorange: false,
       overlaying: "y",
       side: "right",
@@ -232,18 +247,51 @@ function linkedScaleTrace(x, y, logOffset) {
   };
 }
 
+const auxLocks = new Map();
+
+function noteAxisLock(ev, lock, prefix) {
+  if (ev[`${prefix}.autorange`]) lock[prefix] = null;
+  else if (ev[`${prefix}.range[0]`] != null) {
+    lock[prefix] = [+ev[`${prefix}.range[0]`], +ev[`${prefix}.range[1]`]];
+  } else if (Array.isArray(ev[`${prefix}.range`])) {
+    lock[prefix] = ev[`${prefix}.range`].map(Number);
+  }
+}
+
+function bindAuxViewLock(el, panelId) {
+  if (!el || el._bibViewLock || typeof el.on !== "function") return;
+  el._bibViewLock = true;
+  el.on("plotly_relayout", (ev) => {
+    if (!ev || el._bibApplying) return;
+    const lock = auxLocks.get(panelId) || { xaxis: null, yaxis: null };
+    noteAxisLock(ev, lock, "xaxis");
+    noteAxisLock(ev, lock, "yaxis");
+    auxLocks.set(panelId, lock);
+  });
+}
+
 function react(hostId, traces, layout) {
   const el = document.getElementById(hostId);
   if (!el || el.hidden) return;
-  Plotly.react(hostId, traces, layout, {
-    responsive: true,
-    displaylogo: false,
-    modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
+  el._bibApplying = true;
+  Promise.resolve(
+    Plotly.react(hostId, traces, layout, {
+      responsive: true,
+      displaylogo: false,
+      modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
+    }),
+  ).then(() => {
+    bindAuxViewLock(el, hostId);
+    setTimeout(() => {
+      el._bibApplying = false;
+    }, 0);
   });
 }
 
 const SERIES_DASHES = ["solid", "dash", "dot", "longdash", "dashdot"];
 export const SUM_COLOR = "#f4efe4";
+/** Explorer playback and property plots stop here: log10(age of the Universe / yr). */
+export const UI_MAX_LOG_AGE = 10.13;
 
 export function wantPinSum(state) {
   return Boolean(state.sumPins && state.pins.length >= 1);
@@ -421,6 +469,33 @@ export function scrubAuxPlots(logAge) {
   }
 }
 
+function clipShownAges(x, ys) {
+  const xIn = x || [];
+  const series = ys || [];
+  const xi = [];
+  const yOut = series.map(() => []);
+  let i = 0;
+  for (; i < xIn.length; i++) {
+    if (Number(xIn[i]) > UI_MAX_LOG_AGE + 1e-6) break;
+    xi.push(xIn[i]);
+    series.forEach((y, k) => yOut[k].push(y[i]));
+  }
+  if (i > 0 && i < xIn.length && Number(xIn[i - 1]) < UI_MAX_LOG_AGE - 1e-4) {
+    const x0 = Number(xIn[i - 1]);
+    const x1 = Number(xIn[i]);
+    const w = (UI_MAX_LOG_AGE - x0) / (x1 - x0 || 1);
+    xi.push(UI_MAX_LOG_AGE);
+    series.forEach((y, k) => {
+      const a = y[i - 1];
+      const b = y[i];
+      const fa = a != null && Number.isFinite(a);
+      const fb = b != null && Number.isFinite(b);
+      yOut[k].push(fa && fb ? a + (b - a) * w : fa ? a : b);
+    });
+  }
+  return { x: xi, ys: yOut };
+}
+
 export function renderAuxPlots(state, logAge) {
   const liveFactor = massFactor(Number(document.getElementById("sl-mass").value));
   const liveColor = css("--brand-primary") || "#5aa9ff";
@@ -439,10 +514,11 @@ export function renderAuxPlots(state, logAge) {
       continue;
     }
     const packed = spec.pack(live, liveFactor);
-    const allYs = packed.ys.slice();
-    const traces = packed.ys.map((y, i) => {
+    const shown = clipShownAges(live.log_age, packed.ys);
+    const allYs = shown.ys.slice();
+    const traces = shown.ys.map((y, i) => {
       const tr = line(
-        live.log_age,
+        shown.x,
         y,
         packed.names[i],
         liveColor,
@@ -457,18 +533,19 @@ export function renderAuxPlots(state, logAge) {
       const pinPay = pin.series?.[tableKey];
       if (!pinPay) continue;
       const pinPacked = spec.pack(pinPay, massFactor(pin.massLog));
-      allYs.push(...pinPacked.ys);
-      addOverlay(traces, pinPay.log_age, pinPacked.ys, pinPacked.names, pin.color, 1.55, spec.hoverY);
+      const pinShown = clipShownAges(pinPay.log_age, pinPacked.ys);
+      allYs.push(...pinShown.ys);
+      addOverlay(traces, pinShown.x, pinShown.ys, pinPacked.names, pin.color, 1.55, spec.hoverY);
     }
     if (wantPinSum(state)) {
       const summed = sumVisibleSeries(state, tableKey, spec.pack, live, liveFactor);
       if (summed) {
-        allYs.push(...summed.ys);
-        addOverlay(traces, summed.x, summed.ys, summed.names, SUM_COLOR, 2.35, spec.hoverY);
+        const sumShown = clipShownAges(summed.x, summed.ys);
+        addOverlay(traces, sumShown.x, sumShown.ys, summed.names, SUM_COLOR, 2.35, spec.hoverY);
       }
     }
-    if (spec.linkedLog && packed.ys[0]) {
-      traces.push(linkedScaleTrace(live.log_age, packed.ys[0], spec.linkedLog.logOffset));
+    if (spec.linkedLog && shown.ys[0]) {
+      traces.push(linkedScaleTrace(shown.x, shown.ys[0], spec.linkedLog.logOffset));
     }
     traces.push(...styleKeyTraces(packed.names));
     if (spec.linkedLog) {
@@ -497,6 +574,7 @@ export function renderAuxPlots(state, logAge) {
         playheadShapes(logAge, headColor, pinAgeLines(state)),
         spec.linkedLog,
         spec.hoverY,
+        panel.id,
       ),
     );
     ensureAgeClick(host);

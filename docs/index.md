@@ -3,13 +3,14 @@
 **bib** is a pedagogy-first web interface to the publicly released
 [BPASS](https://bpass.auckland.ac.nz) (Binary Population and Spectral Synthesis)
 data products: interactive SEDs of simple stellar populations, synthetic AB
-photometry through bundled or user-supplied filters, dust attenuation, and
-animated Hertzsprung–Russell evolution of individual stellar models — including
-a to-scale binary-system visualizer.
+photometry through bundled or user-supplied filters, and dust extinction of the SED.
 
-It is an independent interface, not an official BPASS product. BPASS data are
-licensed [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) by the
-BPASS team (J. J. Eldridge & E. R. Stanway); bib itself is MIT.
+It is for a quick look at one SED, and for reading those
+numbers through the API. For scripted or large-scale analysis, use
+[hoki](https://heloises.github.io/hoki/intro.html) and the BPASS manuals and
+release papers. BPASS data are licensed
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) by the BPASS team
+(J. J. Eldridge & E. R. Stanway); bib itself is MIT.
 
 ## Quickstart — containers
 
@@ -33,14 +34,19 @@ uv run bib demo-seed
 uv run bib serve
 ```
 
+On an unprivileged VM use `scripts/deploy-vm.sh --host your.server.example`
+(systemd --user, gunicorn on loopback, Apache `.htaccess` `[P]`). See
+[Operations](operations.md).
+
 ## The CLI
 
 | Command | Purpose |
 |---|---|
 | `bib init-db` | Create/upgrade the schema (Alembic) and load bundled filter curves |
-| `bib demo-seed` | Load the synthetic demo dataset (`--force` to reseed) |
-| `bib ingest --source DIR` | Ingest real BPASS files per a manifest ([guide](ingestion.md)) |
+| `bib demo-seed` | Load the synthetic demo dataset (`--force` to reseed, `--remove` to delete it) |
+| `bib ingest --source DIR` | Ingest real BPASS files per a manifest ([guide](ingestion.md)). Operators only — not shown on the public Data & API page. Usual SED loads: `src/bib/ingest/sed-100.yaml` (v2.2.1, 100 M☉ IMFs) and `src/bib/ingest/sed-v23.yaml` (v2.3 `imf135_300` spectral packs). |
 | `bib serve` | Run the web app (`--reload` for development) |
+| `bib down` | Stop a running `bib serve` (leaves PostgreSQL / `bib-pg` alone) |
 | `bib info` | Show configuration and per-table row counts |
 
 ## Acknowledging BPASS

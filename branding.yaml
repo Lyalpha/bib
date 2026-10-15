@@ -16,6 +16,10 @@ tagline: "Explore binary stellar populations, interactively."
 # Leave null to use the built-in glyph.
 logo: null
 
+# Public source repository (README, ingest guide, self-hosting). Leave null
+# until the repo is published — the app will not serve the local checkout.
+source_url: null
+
 # Colour palette. Defaults are a dark "deep-sky" theme.
 colors:
   bg: "#0b1020"          # page background
@@ -32,5 +36,7 @@ colors:
   plot-bg: "#0e1428"     # plot paper background
 
 footer_note: >
-  bib is an independent interface to the publicly released BPASS data products.
+  bib is for a quick look at one SED or one stellar track in the released BPASS
+  data, and for reading those same numbers through the API. For scripted or
+  large-scale analysis, use hoki and the BPASS manuals and release papers.
   BPASS data are licensed CC BY-NC 4.0 by the BPASS team (J.J. Eldridge & E.R. Stanway).

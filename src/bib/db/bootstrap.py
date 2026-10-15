@@ -71,6 +71,7 @@ def print_info(console: Console | None = None) -> None:
                 m.SnRates,
                 m.Yields,
                 m.MLRatio,
+                m.StarCounts,
                 m.HrdGrid,
                 m.StellarModel,
                 m.StellarModelStep,

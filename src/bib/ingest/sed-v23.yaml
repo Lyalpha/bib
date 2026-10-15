@@ -1,0 +1,35 @@
+# Official BPASS v2.3 limited spectral release (Byrne et al. 2022).
+#
+# One IMF (`imf135_300` — there is no Chabrier or 100 M☉ grid in this
+# release), five alpha/Fe packs, binary + single, every metallicity.
+# Members are named `product-{bin|sin}-imf135_300.{alpha}.{z}.dat` with no
+# atmosphere tag. bib loads spectra, colours, and ionizing; Lick and UV-index
+# files in the same archives are ignored (no parsers).
+#
+# Point --source at a folder of official packs, e.g.
+#   bpass_v2.3.a-02.tar.gz
+#   bpass_v2.3.a+00.tar.gz
+#   bpass_v2.3.a+02.tar.gz
+#   bpass_v2.3.a+04.tar.gz
+#   bpass_v2.3.a+06.tar.gz
+#
+#   uv run bib ingest -s /path/to/BPASS_v2.3_release \
+#                     -m src/bib/ingest/sed-v23.yaml
+
+releases:
+  "2.3":
+    name: "v2.3 (alpha-element variations)"
+    url: "https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/bpassv2p3/"
+    citation: >-
+      Byrne et al. (2022), MNRAS 512, 5329; Stanway & Eldridge (2018), MNRAS 479, 75.
+    notes: >-
+      Limited spectral-synthesis release built on the v2.2 population synthesis,
+      substituting C3K atmospheres so alpha/Fe can vary at fixed total Z.
+
+populations:
+  - release: "2.3"
+    imf: imf135_300
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    alphas: [a-02, a+00, a+02, a+04, a+06]
+    products: [spectra, colours, ionizing]

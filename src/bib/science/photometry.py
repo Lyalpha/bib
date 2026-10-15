@@ -47,6 +47,9 @@ class FilterCurve:
             self.transmission = np.clip(self.transmission, 0.0, None)
         if not np.any(self.transmission > 0):
             raise ValueError(f"filter {self.name}: transmission is identically zero")
+        # SVO (and some uploads) ship percent-scale curves; AB magnitudes are
+        # scale-invariant, but overlays and comparisons need a 0–1 peak.
+        self.transmission = normalize_transmission(self.transmission)
         if not self.lambda_eff:
             self.lambda_eff = pivot_wavelength(self.wavelength, self.transmission)
 
@@ -54,6 +57,14 @@ class FilterCurve:
     def support(self) -> tuple[float, float]:
         nz = np.flatnonzero(self.transmission > 0)
         return float(self.wavelength[nz[0]]), float(self.wavelength[nz[-1]])
+
+
+def normalize_transmission(tr: np.ndarray) -> np.ndarray:
+    """Scale a transmission curve so its peak is 1 (dimensionless 0–1)."""
+    peak = float(np.max(tr))
+    if peak <= 0:
+        return tr
+    return tr / peak
 
 
 def pivot_wavelength(wl: np.ndarray, tr: np.ndarray) -> float:
@@ -75,8 +86,15 @@ def ab_magnitude(
     sed_wavelength: np.ndarray,
     sed_flux_lsun_a: np.ndarray,
     filt: FilterCurve,
+    flux_unit: str = "lsun_a",
 ) -> PhotometryResult:
-    """Absolute AB magnitude of an SED (L_sun/Å) through one filter."""
+    """AB magnitude of an SED through one filter.
+
+    ``flux_unit="lsun_a"`` (default): flux is L_sun/Å and is placed at 10 pc
+    (absolute magnitude). ``flux_unit="flam_cgs"``: flux is already an
+    observed f_λ in erg/s/cm²/Å (apparent magnitude — used for redshifted
+    SEDs).
+    """
     lo, hi = filt.support
     sed_lo, sed_hi = float(sed_wavelength[0]), float(sed_wavelength[-1])
     overlap_lo, overlap_hi = max(lo, sed_lo), min(hi, sed_hi)
@@ -95,7 +113,7 @@ def ab_magnitude(
         flux = sed_flux_lsun_a[sel]
         tr = np.interp(wl, filt.wavelength, filt.transmission, left=0.0, right=0.0)
 
-    f_lambda = flux_at_10pc(flux)  # erg/s/cm^2/Å at 10 pc
+    f_lambda = flux if flux_unit == "flam_cgs" else flux_at_10pc(flux)  # erg/s/cm^2/Å
     ab_f_lambda = AB_ZERO_FNU * C_A_S / wl**2  # 3631 Jy expressed as f_λ
 
     if filt.detector_type == "photon":

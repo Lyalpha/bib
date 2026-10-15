@@ -45,4 +45,5 @@ nav:
   - Ingesting BPASS data: ingestion.md
   - REST API: api.md
   - Branding & deployment: deployment.md
+  - Operations: operations.md
   - Code reference: reference.md

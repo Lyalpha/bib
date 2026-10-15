@@ -1,4 +1,4 @@
-{# Copyable BPASS acknowledgement boxes + citation list. Included on / and /about. #}
+{# Copyable BPASS acknowledgement boxes + citation list. Included on the home page. #}
 <div class="grid cols-2">
   <div class="ack-box">
     <button class="copy-btn small" data-copy="ack-v22-text" title="Copy to clipboard">Copy</button>
@@ -32,32 +32,4 @@
       <a href="https://doi.org/10.1093/mnras/stac807" target="_blank" rel="noopener">DOI</a></li>
 </ul>
 
-<script>
-  if (!window.__ackCopyWired) {
-    window.__ackCopyWired = true;
-    document.addEventListener("click", async (ev) => {
-      const btn = ev.target.closest("[data-copy]");
-      if (!btn) return;
-      const el = document.getElementById(btn.dataset.copy);
-      const text = el.textContent.replace(/\s+/g, " ").trim();
-      let ok = false;
-      try {
-        await navigator.clipboard.writeText(text); // needs a secure context + focus
-        ok = true;
-      } catch {
-        // Fallback for plain-http deployments and older browsers.
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        ok = document.execCommand("copy");
-        ta.remove();
-      }
-      btn.textContent = ok ? "Copied!" : "Select & copy manually";
-      if (ok) btn.classList.add("copied");
-      setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 1600);
-    });
-  }
-</script>
+<script src="/static/js/ack-copy.js" defer></script>

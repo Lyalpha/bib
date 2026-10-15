@@ -1,0 +1,22 @@
+[Unit]
+Description=bib BPASS-in-Browser
+After=network.target
+# User unit: enable lingering so it survives logout (loginctl enable-linger).
+# Gunicorn binds loopback; Apache .htaccess (RewriteRule [P]) proxies to it.
+
+[Service]
+Type=simple
+WorkingDirectory=%h/bib
+EnvironmentFile=%h/.config/bib/env
+Environment=PATH=%h/bib/.venv/bin:%h/.local/bin:/usr/bin
+ExecStartPre=%h/bib/.venv/bin/python -c "from bib.db.session import wait_for_database; wait_for_database()"
+# Gunicorn 26 dropped the factory CLI flag; use the create_app() URI form instead.
+ExecStart=%h/bib/.venv/bin/python -m gunicorn "bib.app:create_app()" -k uvicorn.workers.UvicornWorker --bind 127.0.0.1:8001 --workers 2 --forwarded-allow-ips 127.0.0.1 --access-logfile %h/.local/state/bib/access.log --error-logfile %h/.local/state/bib/error.log
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+StandardOutput=append:%h/.local/state/bib/service.log
+StandardError=append:%h/.local/state/bib/service.log
+
+[Install]
+WantedBy=default.target

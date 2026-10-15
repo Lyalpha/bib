@@ -6,7 +6,7 @@ import pytest
 
 from bib.config import get_branding, get_settings
 
-PAGES = ["/", "/index.html", "/ssp", "/star", "/tutorial", "/data", "/about"]
+PAGES = ["/", "/index.html", "/ssp", "/tutorial", "/request", "/data"]
 
 
 @pytest.mark.parametrize("path", PAGES)
@@ -31,16 +31,11 @@ def test_sed_url_redirects_to_ssp(client):
     assert response.headers["location"].endswith("/ssp")
 
 
-def test_star_page_is_star_explorer(client):
-    html = client.get("/star").text
-    assert "Star Explorer" in html
-    assert "HR Explorer" not in html
-
-
-def test_hr_url_redirects_to_star(client):
-    response = client.get("/hr", follow_redirects=False)
-    assert response.status_code in (301, 307, 308)
-    assert response.headers["location"].endswith("/star")
+def test_star_explorer_is_parked(client):
+    for path in ("/star", "/hr"):
+        response = client.get(path, follow_redirects=False)
+        assert response.status_code in (301, 302, 307, 308)
+        assert response.headers["location"].endswith("/")
 
 
 def test_landing_carries_official_acknowledgements(client):
@@ -50,9 +45,12 @@ def test_landing_carries_official_acknowledgements(client):
     assert "Byrne et al" in html
 
 
-def test_about_has_acknowledgement_anchor(client):
-    html = client.get("/about").text
-    assert 'id="acknowledgement"' in html  # the footer links to /about#acknowledgement
+def test_about_redirects_to_acknowledgement(client):
+    response = client.get("/about", follow_redirects=False)
+    assert response.status_code in (301, 307, 308)
+    assert response.headers["location"].endswith("/#acknowledgement")
+    html = client.get("/").text
+    assert 'id="acknowledgement"' in html
     assert "Cursor" in html
     assert "late 2026" in html
 
@@ -101,6 +99,7 @@ def test_api_docs_served(client):
     paths = schema.json()["paths"]
     assert "/api/v1/meta" in paths
     assert "/api/v1/populations/{population_id}/sed" in paths
+    assert "/api/v1/export" in paths
     assert "/api/v1/populations/{population_id}/sed_frames" not in paths
 
 
@@ -114,7 +113,9 @@ def test_api_v1_root_redirects_to_docs(client, path):
 def test_landing_and_data_link_api_docs(client):
     home = client.get("/").text
     assert 'href="/api/docs"' in home
-    assert "Star Explorer" in home
+    assert "SSP Explorer" in home
+    assert "Request data" in home
+    assert "Star Explorer" not in home
     assert "HR Explorer" not in home
 
 

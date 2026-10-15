@@ -21,6 +21,7 @@ site/
 # Data (raw BPASS downloads and scratch artefacts live outside git)
 /data/raw/
 /data/scratch/
+.bib-extract/
 *.tar
 *.tar.gz
 
@@ -28,3 +29,4 @@ site/
 .idea/
 .vscode/
 *.swp
+.agent/

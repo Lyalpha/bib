@@ -38,7 +38,6 @@ def test_meta_shape(meta):
     assert meta["releases"], "at least one release"
     assert len(meta["log_ages"]) == 51
     assert {law["key"] for law in meta["dust_laws"]} == {"ccm89", "f99", "calzetti00", "smc"}
-    assert meta["n_stellar_models"] >= 5
     assert meta["has_synthetic"] is True
     assert meta["imfs"]
     assert all("form_label" in imf and "dndm" in imf for imf in meta["imfs"])
@@ -340,25 +339,3 @@ def test_custom_filter_upload_rejects_garbage(api_client, demo_population):
         files={"file": ("bad.txt", io.BytesIO(b"not a filter"), "text/plain")},
     )
     assert response.status_code == 422
-
-
-def test_models_search_and_track(api_client):
-    models = api_client.get("/api/v1/models").json()
-    assert len(models) >= 5
-    primaries = api_client.get("/api/v1/models", params={"kind": "primary"}).json()
-    assert primaries and all(mm["kind"] == "primary" for mm in primaries)
-
-    binary = next(mm for mm in primaries if mm["q_init"])
-    track = api_client.get(f"/api/v1/models/{binary['id']}/track").json()
-    arrays = track["arrays"]
-    n = track["n_points"]
-    for key in ("age_yr", "log_t1", "log_l1", "m1", "sep_rsun", "rl1_rsun", "rlof_active"):
-        assert len(arrays[key]) == n, key
-    assert track["events"], "curated tracks must carry events"
-    event_types = {e["event_type"] for e in track["events"]}
-    assert {"zams", "endpoint"} <= event_types
-    assert all(0 <= e["index"] < n for e in track["events"])
-
-
-def test_track_404(api_client):
-    assert api_client.get("/api/v1/models/999999/track").status_code == 404

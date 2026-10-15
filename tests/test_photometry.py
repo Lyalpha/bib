@@ -91,7 +91,23 @@ def test_filter_curve_sorts_and_clips():
     )
     assert np.all(np.diff(curve.wavelength) > 0)
     assert np.all(curve.transmission >= 0)
+    assert curve.transmission.max() == pytest.approx(1.0)
     assert curve.lambda_eff > 0
+
+
+def test_percent_scale_filter_normalizes_and_matches_unit_scale():
+    """GALEX-style percent curves (peak ~80) must match a 0–1 copy."""
+    wl = np.linspace(1400.0, 1800.0, 80)
+    unit = np.exp(-(((wl - 1600.0) / 80.0) ** 2))
+    percent = FilterCurve(name="pct", display_name="pct", wavelength=wl, transmission=unit * 80.0)
+    ones = FilterCurve(name="one", display_name="one", wavelength=wl, transmission=unit)
+    assert percent.transmission.max() == pytest.approx(1.0)
+    np.testing.assert_allclose(percent.transmission, ones.transmission)
+    sed = ab_flat_sed(np.geomspace(1000.0, 3000.0, 400))
+    grid = np.geomspace(1000.0, 3000.0, 400)
+    assert ab_magnitude(grid, sed, percent).ab_mag == pytest.approx(
+        ab_magnitude(grid, sed, ones).ab_mag, abs=1e-9
+    )
 
 
 def test_filter_curve_rejects_zero_transmission():

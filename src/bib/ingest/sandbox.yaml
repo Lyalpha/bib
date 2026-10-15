@@ -1,0 +1,19 @@
+# Small real-data subset for a first look at actual BPASS SEDs.
+# Source files: hoki's bundled v2.2.1 examples (same ASCII products).
+# Fetch: uv run python scripts/fetch_bpass_subset.py
+
+releases:
+  "2.2.1":
+    name: "Tuatara"
+    url: "https://bpass.auckland.ac.nz"
+    citation: >-
+      Eldridge, Stanway et al. (2017), PASA 34, e058;
+      Stanway & Eldridge (2018), MNRAS 479, 75.
+    notes: "Sandbox subset of the v2.2.1 fiducial IMF (imf135_300)."
+
+populations:
+  - release: "2.2.1"
+    imf: imf135_300
+    pop_types: [bin]
+    metallicities: [z002, z008]
+    products: [spectra, colours, ionizing]

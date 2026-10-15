@@ -91,6 +91,20 @@ export class PlaybackClock {
  * @param {PlaybackClock} clock
  * @param {(t: number) => string} format  readout text for a given t
  */
+/** Paint the blue track fill from a range input's min/max/value. */
+export function syncRangeFill(el) {
+  if (!el) return;
+  const min = Number(el.min);
+  const max = Number(el.max);
+  const value = Number(el.value);
+  const span = max - min || 1;
+  el.style.setProperty("--fill", `${((value - min) / span) * 100}%`);
+}
+
+export function syncAllRangeFills(root = document) {
+  root.querySelectorAll('input[type="range"]').forEach(syncRangeFill);
+}
+
 export function attachPlaybar(el, clock, format) {
   const $ = (role) => el.querySelector(`[data-role="${role}"]`);
   const play = $("play");
@@ -120,6 +134,7 @@ export function attachPlaybar(el, clock, format) {
     const applySpeed = () => {
       const s = Math.pow(2, Number(speed.value)); // slider is log2(speed)
       clock.setSpeed(s);
+      syncRangeFill(speed);
       if (speedOut) speedOut.textContent = `${s >= 1 ? s.toFixed(s >= 4 ? 0 : 1) : s.toFixed(2)}×`;
     };
     speed.addEventListener("input", applySpeed);
@@ -131,9 +146,11 @@ export function attachPlaybar(el, clock, format) {
     paint(t);
     prevTick(t);
   };
+  const prevPlay = clock.onPlayState;
   clock.onPlayState = (playing) => {
     play.textContent = playing ? "⏸" : "▶";
     play.title = playing ? "Pause" : "Play";
+    prevPlay(playing);
   };
   paint(clock.t);
 }

@@ -29,6 +29,10 @@ dependencies = [
 [project.scripts]
 bib = "bib.cli:main"
 
+[project.optional-dependencies]
+ops = ["sentry-sdk[fastapi]>=2.44"]
+prod = ["gunicorn>=23"]
+
 [dependency-groups]
 dev = [
     "pytest>=8.2",

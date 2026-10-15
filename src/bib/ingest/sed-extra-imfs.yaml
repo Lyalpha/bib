@@ -1,0 +1,64 @@
+# Additional BPASS v2.2.1 IMFs beyond the pedagogical 100 M☉ pair
+# (imf135_100 and imf_chab100, loaded by sed-100.yaml).
+#
+# Point --source at a directory that contains only these official tarballs:
+#   bpass_v2.2.1_imf100_100.tar.gz
+#   bpass_v2.2.1_imf100_300.tar.gz
+#   bpass_v2.2.1_imf135_300.tar.gz
+#   bpass_v2.2.1_imf170_100.tar.gz
+#   bpass_v2.2.1_imf170_300.tar.gz
+#   bpass_v2.2.1_imf_chab300.tar.gz
+#
+# One `bib ingest` call is a single database transaction. On a small disk,
+# run once per IMF (filter this file) so each commit is one 26-population grid.
+#
+#   uv run bib ingest --source ~/bpass-imf --manifest src/bib/ingest/sed-extra-imfs.yaml
+
+releases:
+  "2.2.1":
+    name: "Tuatara"
+    url: "https://bpass.auckland.ac.nz"
+    citation: >-
+      Eldridge, Stanway et al. (2017), PASA 34, e058;
+      Stanway & Eldridge (2018), MNRAS 479, 75.
+    notes: >-
+      v2.2.1 population products for the IMF variants that are not in the
+      100 M☉ pedagogical load: broken power-laws with slopes 1.00, 1.35, and
+      1.70 at 100 and 300 M☉ caps, plus Chabrier with a 300 M☉ cap.
+
+populations:
+  - release: "2.2.1"
+    imf: imf100_100
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
+
+  - release: "2.2.1"
+    imf: imf100_300
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
+
+  - release: "2.2.1"
+    imf: imf135_300
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
+
+  - release: "2.2.1"
+    imf: imf170_100
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
+
+  - release: "2.2.1"
+    imf: imf170_300
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
+
+  - release: "2.2.1"
+    imf: imf_chab300
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]

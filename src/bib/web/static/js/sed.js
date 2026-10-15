@@ -4,6 +4,7 @@
 import { apiGet, apiUrl, reportError } from "./api.js";
 import { PLOT_GRID, logAxisTicks } from "./plot-axis.js";
 import { PlaybackClock, attachPlaybar, lerp, locate, syncRangeFill, syncAllRangeFills } from "./playback.js";
+import { redshiftSliderMax, zFromSlider } from "./redshift-slider.js?v=1";
 import {
   auxPlotsReady,
   cloneSeries,
@@ -13,8 +14,9 @@ import {
   scrubAuxPlots,
   setAuxAgeClickHandler,
   SUM_COLOR,
+  UI_MAX_LOG_AGE,
   wantPinSum,
-} from "./ssp-plots.js?v=11";
+} from "./ssp-plots.js?v=15";
 
 const $ = (id) => document.getElementById(id);
 const css = (name) =>
@@ -57,6 +59,8 @@ const state = {
   xLog: true,
   xNu: false,
   yLog: true,
+  userX: null,
+  userY: null,
   pins: [],
   pinSeq: 0,
   syncPins: false,
@@ -268,7 +272,7 @@ function framesLogRange(payload) {
 
 function interpFromFrames(payload, t) {
   const frames = payload.frames;
-  const ageIdx = t * 50;
+  const ageIdx = (t * (UI_MAX_LOG_AGE - 6)) / 0.1;
   const logAges = frames.map((f) => f.age_index);
   const [i0, i1, w] = locate(logAges, ageIdx);
   const f0 = frames[i0].flux;
@@ -287,11 +291,11 @@ function interpFromFrames(payload, t) {
 /* ------------------------------------------------------------- play trail */
 
 function logAgeFromT(t) {
-  return 6 + t * 5;
+  return 6 + t * (UI_MAX_LOG_AGE - 6);
 }
 
 function tFromLogAge(logAge) {
-  return (logAge - 6) / 5;
+  return (logAge - 6) / (UI_MAX_LOG_AGE - 6);
 }
 
 function clearTrail() {
@@ -320,7 +324,7 @@ function harvestTrail(logAge) {
  *  stretching min–max, so the first snapshot does not vanish when the next
  *  one appears). Floor is high enough to read on the dark plot. */
 function trailStyle(logAge) {
-  const t = Math.min(1, Math.max(0, (logAge - 6) / 5));
+  const t = Math.min(1, Math.max(0, (logAge - 6) / (UI_MAX_LOG_AGE - 6)));
   return {
     color: `hsla(210, ${Math.round(44 + 36 * t)}%, ${Math.round(38 + 16 * t)}%, ${(0.58 + 0.32 * t).toFixed(2)})`,
     width: 1.05 + 0.45 * t,
@@ -349,6 +353,61 @@ function updateTrailUi() {
 
 /* Flat ΛCDM luminosity distance — same H0, Ωm as the server (bib.science.redshift). */
 const _dlCache = new Map();
+
+const _univCache = new Map();
+
+/** Age of the Universe at redshift z, same flat ΛCDM as the luminosity distance. */
+function universeAgeYr(z) {
+  const zz = Math.max(0, Number(z) || 0);
+  const key = zz.toFixed(3);
+  if (_univCache.has(key)) return _univCache.get(key);
+  const h0 = state.meta?.cosmology?.h0 ?? 70;
+  const om0 = state.meta?.cosmology?.om0 ?? 0.3;
+  const ol = 1 - om0;
+  const invHyr = 9.777922166e11 / h0;
+  const E = (zi) => Math.sqrt(om0 * (1 + zi) ** 3 + ol);
+  const zMax = 1e4;
+  const n = 480;
+  const a = Math.log(1 + zz);
+  const b = Math.log(1 + zMax);
+  const d = (b - a) / n;
+  let integ = 0.5 / E(zz);
+  for (let i = 1; i < n; i++) integ += 1 / E(Math.exp(a + i * d) - 1);
+  integ += 0.5 / E(zMax);
+  const age = invHyr * integ * d;
+  _univCache.set(key, age);
+  return age;
+}
+
+function formatCosmoAge(yr) {
+  if (yr >= 1e9) return `${(yr / 1e9).toFixed(2)} Gyr`;
+  if (yr >= 1e6) return `${(yr / 1e6).toFixed(1)} Myr`;
+  return `${yr.toExponential(1)} yr`;
+}
+
+function updateCosmoWarn(logAge) {
+  const z = zFromSlider($("sl-redshift")?.value);
+  const ageYr = 10 ** logAge;
+  const univYr = universeAgeYr(z);
+  const limitYr = z <= 0 ? 10 ** UI_MAX_LOG_AGE : univYr;
+  const tooOld = ageYr > limitYr;
+  const label = state.meta?.cosmology?.label || "flat ΛCDM, H₀=70 km/s/Mpc, Ωm=0.3";
+  const tip = tooOld
+    ? `SSP is older than the Universe at this redshift. Population age ${formatCosmoAge(ageYr)}; the Universe at z=${z.toFixed(2)} is ${formatCosmoAge(univYr)} old (${label}).`
+    : "";
+  for (const id of ["sl-age", "sl-redshift"]) {
+    const el = $(id);
+    if (el) el.classList.toggle("is-cosmowarn", tooOld);
+  }
+  const scrub = document.querySelector('#sed-playbar [data-role="scrub"]');
+  if (scrub) scrub.classList.toggle("is-cosmowarn", tooOld);
+  for (const id of ["age-bang", "z-bang", "play-bang"]) {
+    const bang = $(id);
+    if (!bang) continue;
+    bang.hidden = !tooOld;
+    bang.title = tip;
+  }
+}
 
 function luminosityDistanceMpc(z) {
   if (!(z > 0)) return 1e-5; // 10 pc
@@ -490,18 +549,28 @@ function plotLayout(xExtent, yLogExtent) {
     : z > 0
       ? "observed wavelength (Å)"
       : "wavelength (Å)";
-  const xLogSpan = Math.log10(xExtent[1]) - Math.log10(xExtent[0]);
-  const yLogSpan = yLogExtent[1] - yLogExtent[0] + 0.35;
+  const xRange = state.userX
+    ? state.userX.slice()
+    : state.xLog
+      ? [Math.log10(xExtent[0]), Math.log10(xExtent[1])]
+      : [xExtent[0] * 0.98, xExtent[1] * 1.02];
+  const yRange = state.userY
+    ? state.userY.slice()
+    : state.yLog
+      ? [yLogExtent[0] - 0.05, yLogExtent[1] + 0.3]
+      : [0, Math.pow(10, yLogExtent[1]) * 1.08];
+  const xLogSpan = state.xLog ? xRange[1] - xRange[0] : Math.log10(xExtent[1]) - Math.log10(xExtent[0]);
+  const yLogSpan = state.yLog ? yRange[1] - yRange[0] : yLogExtent[1] - yLogExtent[0] + 0.35;
   const xaxis = {
     type: state.xLog ? "log" : "linear",
     title: { text: xLabel, standoff: 14 },
+    range: xRange,
+    autorange: false,
     gridcolor: grid,
     gridwidth: 1,
     zeroline: false,
     ...(state.xLog ? logAxisTicks(xLogSpan) : {}),
   };
-  if (state.xLog) xaxis.range = [Math.log10(xExtent[0]), Math.log10(xExtent[1])];
-  else xaxis.range = [xExtent[0] * 0.98, xExtent[1] * 1.02];
 
   const yaxis = {
     type: state.yLog ? "log" : "linear",
@@ -515,10 +584,10 @@ function plotLayout(xExtent, yLogExtent) {
     gridwidth: 1,
     zeroline: false,
     exponentformat: "power",
+    range: yRange,
+    autorange: false,
     ...(state.yLog ? logAxisTicks(yLogSpan) : {}),
   };
-  if (state.yLog) yaxis.range = [yLogExtent[0] - 0.05, yLogExtent[1] + 0.3];
-  else yaxis.range = [0, Math.pow(10, yLogExtent[1]) * 1.08];
 
   // Passbands live on a hidden second axis: T=0–1 occupies the lower 20%.
   const layout = {
@@ -616,14 +685,27 @@ function sumVisibleSed(t, live) {
   return { x, y };
 }
 
-function growYExtent(yLo, yHi, ys) {
-  for (const v of ys) {
-    if (!(v > 0)) continue;
-    const lg = Math.log10(v);
-    if (lg < yLo) yLo = lg;
-    if (lg > yHi) yHi = lg;
+function noteAxisLock(ev, lock, prefix) {
+  if (!ev) return;
+  if (ev[`${prefix}.autorange`]) lock[prefix] = null;
+  else if (ev[`${prefix}.range[0]`] != null) {
+    lock[prefix] = [+ev[`${prefix}.range[0]`], +ev[`${prefix}.range[1]`]];
+  } else if (Array.isArray(ev[`${prefix}.range`])) {
+    lock[prefix] = ev[`${prefix}.range`].map(Number);
   }
-  return [yLo, yHi];
+}
+
+function bindSedViewLock(host) {
+  if (!host || host._bibViewLock || typeof host.on !== "function") return;
+  host._bibViewLock = true;
+  host.on("plotly_relayout", (ev) => {
+    if (!ev || host._bibApplying) return;
+    const box = { xaxis: state.userX, yaxis: state.userY };
+    noteAxisLock(ev, box, "xaxis");
+    noteAxisLock(ev, box, "yaxis");
+    state.userX = box.xaxis;
+    state.userY = box.yaxis;
+  });
 }
 
 function drawSedFrame(t) {
@@ -692,9 +774,6 @@ function drawSedFrame(t) {
   if (wantPinSum(state)) {
     const summed = sumVisibleSed(t, cur);
     if (summed) {
-      xMin = Math.min(xMin, summed.x[0], summed.x[summed.x.length - 1]);
-      xMax = Math.max(xMax, summed.x[0], summed.x[summed.x.length - 1]);
-      [yLo, yHi] = growYExtent(yLo, yHi, summed.y);
       traces.push({
         uid: "sum-sed",
         x: spectralXs(copyArr(summed.x)),
@@ -761,10 +840,19 @@ function drawSedFrame(t) {
   const xLo = state.xNu ? C_A_S / xMax : xMin;
   const xHi = state.xNu ? C_A_S / xMin : xMax;
   if (!$("panel-sed")?.hidden) {
-    Plotly.react("sed-plot", traces, plotLayout([xLo, xHi], [yLo, yHi]), {
-      responsive: true,
-      displaylogo: false,
-      modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
+    const host = $("sed-plot");
+    host._bibApplying = true;
+    Promise.resolve(
+      Plotly.react("sed-plot", traces, plotLayout([xLo, xHi], [yLo, yHi]), {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
+      }),
+    ).then(() => {
+      bindSedViewLock(host);
+      setTimeout(() => {
+        host._bibApplying = false;
+      }, 0);
     });
   }
   renderColorKey(logAge);
@@ -772,10 +860,12 @@ function drawSedFrame(t) {
 }
 
 function updateAgeChrome(t, w) {
-  const ageIdx = t * 50;
+  const logAge = logAgeFromT(t);
+  const ageIdx = (logAge - 6) / 0.1;
   $("sl-age").value = String(ageIdx);
   syncRangeFill($("sl-age"));
-  $("out-age").textContent = (6 + ageIdx * 0.1).toFixed(2);
+  $("out-age").textContent = logAge.toFixed(2);
+  updateCosmoWarn(logAge);
   $("interp-note").textContent =
     w > 0.02 && w < 0.98
       ? "Showing an interpolated frame (visual only) — photometry always uses true grid ages."
@@ -1029,15 +1119,10 @@ function updateFrameNotes() {
         ? "D<sub>L</sub> = …"
         : "D<sub>L</sub> = 10 pc";
   if (z > 0) {
-    $("frame-note").innerHTML =
-        `Quantities are for 10<sup>6</sup> M<sub>☉</sub> formed unless rescaled · ` +
-        `z = ${z.toFixed(2)} · ${dl} · apparent AB magnitudes`;
     $("phot-frame").innerHTML = `(apparent AB · z = ${z.toFixed(2)} · ${dl})`;
     $("th-mag").innerHTML = "m<sub>AB</sub>";
     $("dl-note").innerHTML = `${dl} · apparent mags`;
   } else {
-    $("frame-note").innerHTML =
-      `Quantities are for 10<sup>6</sup> M<sub>☉</sub> formed unless rescaled · ${dl} · absolute AB magnitudes`;
     $("phot-frame").innerHTML = `(absolute AB · ${dl})`;
     $("th-mag").innerHTML = "M<sub>AB</sub>";
     $("dl-note").innerHTML = `${dl} · absolute mags`;
@@ -1076,24 +1161,100 @@ function updateExportLinks() {
 
 /* --------------------------------------------------------------------- pins */
 
+function esc(value) {
+  return String(value).replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch]));
+}
+
+function liveLegendSpec(logAge) {
+  const sel = currentSelection();
+  const dust = dustParams();
+  return {
+    imfLabel: imfLabel(sel.imf),
+    z: sel.z,
+    poptype: sel.poptype,
+    alpha: sel.alpha,
+    massLog: Number($("sl-mass").value),
+    dustLaw: dust.dust_law || "",
+    ebv: dust.ebv,
+    redshift: state.redshift,
+    logAge,
+  };
+}
+
+/** Named bits of an SSP label. Optional bits are omitted when every SSP is at the default. */
+function legendParts(spec) {
+  const mass = Math.round(Number(spec.massLog) * 10) / 10;
+  const z = Number(spec.redshift) || 0;
+  const dust = spec.dustLaw
+    ? `${spec.dustLaw} E(B−V)=${Number(spec.ebv).toFixed(2)}`
+    : "";
+  const exp = Number.isInteger(mass) ? String(mass) : mass.toFixed(1);
+  return [
+    { key: "imf", text: esc(spec.imfLabel), html: true, relevant: true },
+    { key: "z", text: esc(spec.z), html: true, relevant: true },
+    { key: "pop", text: spec.poptype === "bin" ? "binary" : "single", relevant: true },
+    { key: "alpha", text: spec.alpha ? esc(spec.alpha) : "no [α/Fe]", relevant: Boolean(spec.alpha) },
+    { key: "mass", text: `10<sup>${exp}</sup> M☉`, html: true, relevant: mass !== 6 },
+    { key: "dust", text: dust ? esc(dust) : "no dust", html: true, relevant: Boolean(dust) },
+    { key: "redshift", text: `z=${z.toFixed(2)}`, relevant: z > 0 },
+    {
+      key: "age",
+      text: Number.isFinite(spec.logAge) ? `logA=${Number(spec.logAge).toFixed(2)}` : "",
+      relevant: Number.isFinite(spec.logAge),
+    },
+  ];
+}
+
+function legendRows(entries) {
+  const parts = entries.map((entry) => legendParts(entry.spec));
+  const n = parts[0].length;
+  const shared = [];
+  const varying = [];
+  for (let i = 0; i < n; i++) {
+    if (!parts.some((row) => row[i].relevant)) continue;
+    const texts = parts.map((row) => row[i].text);
+    if (entries.length > 1 && texts.every((text) => text === texts[0])) shared.push(texts[0]);
+    else varying.push(i);
+  }
+  const rows = entries.map((entry, i) => ({
+    color: entry.color,
+    label: varying.map((idx) => parts[i][idx].text).filter(Boolean).join(" · "),
+  }));
+  return { shared, rows };
+}
+
 function renderColorKey(logAge) {
   const host = $("ssp-color-key");
   if (!host) return;
   const liveColor = css("--brand-primary") || "#5aa9ff";
   const age = Number.isFinite(logAge) ? logAge : logAgeFromT(clock.t);
   const t = clock.t;
-  const rows = [{ color: liveColor, label: liveLabel(age) }];
+  const entries = [{ color: liveColor, spec: liveLegendSpec(age) }];
+  const fallbacks = [];
   for (const pin of state.pins) {
-    rows.push({ color: pin.color, label: pinView(pin, t).label });
+    if (!pin.legend) {
+      fallbacks.push({ color: pin.color, label: pinView(pin, t).label });
+      continue;
+    }
+    let spec = pin.legend;
+    if (state.syncPins && pin.frames) {
+      spec = { ...spec, logAge: interpFromFrames(pin.frames, t).logAge };
+    }
+    entries.push({ color: pin.color, spec });
   }
+  const { shared, rows } = legendRows(entries);
+  rows.push(...fallbacks);
   if (wantPinSum(state)) rows.push({ color: SUM_COLOR, label: "Σ visible spectra" });
-  host.innerHTML = rows
-    .map(
-      (row) =>
-        `<div class="key-row"><span class="key-dot" style="--key-color:${row.color}"></span>` +
-        `<span class="key-label">${row.label}</span></div>`,
-    )
-    .join("");
+  const head = shared.length ? `<p class="key-shared">${shared.join(" · ")}</p>` : "";
+  host.innerHTML =
+    head +
+    rows
+      .map(
+        (row) =>
+          `<div class="key-row"><span class="key-dot" style="--key-color:${row.color}"></span>` +
+          `<span class="key-label">${row.label}</span></div>`,
+      )
+      .join("");
 }
 
 function renderPins() {
@@ -1176,7 +1337,8 @@ async function init() {
     }
     if (meta.cosmology) {
       $("cosmo-note").title = meta.cosmology.label;
-      $("sl-redshift").max = String(Math.min(10, meta.cosmology.max_redshift));
+      $("sl-redshift").max = String(redshiftSliderMax());
+      $("sl-redshift").step = "1";
       syncRangeFill($("sl-redshift"));
     }
 
@@ -1185,10 +1347,11 @@ async function init() {
       clock.pause();
       clock.scrub(Math.min(1, Math.max(0, tFromLogAge(logAge))));
     });
-    attachPlaybar($("sed-playbar"), clock, (t) => `log(age/yr) = ${(6 + t * 5).toFixed(2)}`);
+    attachPlaybar($("sed-playbar"), clock, (t) => `log(age/yr) = ${logAgeFromT(t).toFixed(2)}`);
     renderPins();
     updateTrailUi();
-    clock.scrub(Number($("sl-age").value) / 50);
+    $("sl-age").max = String((UI_MAX_LOG_AGE - 6) / 0.1);
+    clock.scrub(Number($("sl-age").value) / Number($("sl-age").max));
     await loadFrames();
   } catch (err) {
     reportError(err);
@@ -1210,15 +1373,13 @@ $("seg-poptype").addEventListener("change", () => {
 
 $("sl-age").addEventListener("input", () => {
   clock.pause();
-  clock.scrub(Number($("sl-age").value) / 50);
+  clock.scrub(Number($("sl-age").value) / Number($("sl-age").max));
 });
 
 $("sl-mass").addEventListener("input", () => {
-  const value = Number($("sl-mass").value);
-  const sup = "⁰¹²³⁴⁵⁶⁷⁸⁹";
-  $("out-mass").textContent = Number.isInteger(value)
-    ? `10${String(value).split("").map((c) => sup[+c]).join("")}`
-    : `10^${value.toFixed(1)}`;
+  const value = Math.round(Number($("sl-mass").value) * 10) / 10;
+  const exp = Number.isInteger(value) ? String(value) : value.toFixed(1);
+  $("out-mass").innerHTML = `10<sup>${exp}</sup>`;
   syncRangeFill($("sl-mass"));
   if (state.series) {
     renderAuxPlots(state, logAgeFromT(clock.t));
@@ -1245,8 +1406,9 @@ $("sl-rv").addEventListener("input", () => {
 });
 
 $("sl-redshift").addEventListener("input", () => {
-  state.redshift = Number($("sl-redshift").value);
+  state.redshift = zFromSlider($("sl-redshift").value);
   $("out-redshift").textContent = state.redshift.toFixed(2);
+  updateCosmoWarn(logAgeFromT(clock.t));
   syncRangeFill($("sl-redshift"));
   if (state.redshift === 0) state.dlMpc = null;
   invalidatePhotometry();
@@ -1265,14 +1427,17 @@ $("chk-balmer").addEventListener("change", () => {
 
 $("chk-xlog").addEventListener("change", () => {
   state.xLog = $("chk-xlog").checked;
+  state.userX = null;
   renderFrame(clock.t);
 });
 $("chk-ylog").addEventListener("change", () => {
   state.yLog = $("chk-ylog").checked;
+  state.userY = null;
   renderFrame(clock.t);
 });
 $("seg-xunit").addEventListener("change", () => {
   state.xNu = document.querySelector('input[name="xunit"]:checked').value === "nu";
+  state.userX = null;
   $("xlog-sym").textContent = state.xNu ? "ν" : "λ";
   renderFrame(clock.t);
 });
@@ -1296,6 +1461,11 @@ $("chk-trail").addEventListener("change", () => {
   renderFrame(clock.t);
 });
 
+function nextPinColor() {
+  const used = new Set(state.pins.map((pin) => pin.color));
+  return PIN_COLORS.find((color) => !used.has(color)) || PIN_COLORS[state.pins.length % PIN_COLORS.length];
+}
+
 $("btn-pin").addEventListener("click", () => {
   if (!state.frames || state.trailOn) return;
   const { y, logAge } = interpFromFrames(state.frames, clock.t);
@@ -1304,8 +1474,9 @@ $("btn-pin").addEventListener("click", () => {
   const basebits = labelBits().join(" · ");
   state.pins.push({
     id: ++state.pinSeq,
-    color: PIN_COLORS[(state.pinSeq - 1) % PIN_COLORS.length],
+    color: nextPinColor(),
     basebits,
+    legend: liveLegendSpec(logAge),
     z,
     massLog: Number($("sl-mass").value),
     frames: structuredClone(state.frames),

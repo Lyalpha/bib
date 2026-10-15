@@ -9,11 +9,11 @@ router = APIRouter(tags=["v1"])  # mounted under /api/v1 by the app factory
 
 from bib.api.v1 import (  # noqa: E402
     endpoints,
+    export,
     filters,
     meta,
     photometry,
     populations,
-    stellar_models,
 )
 
 router.include_router(endpoints.router)
@@ -21,4 +21,4 @@ router.include_router(meta.router)
 router.include_router(populations.router)
 router.include_router(filters.router)
 router.include_router(photometry.router)
-router.include_router(stellar_models.router)
+router.include_router(export.router)

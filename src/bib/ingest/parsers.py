@@ -58,10 +58,22 @@ def _open_text(path: Path) -> io.TextIOBase:
 
 def _load_table(path: Path, n_cols: int | None = None, n_rows: int | None = None) -> np.ndarray:
     with _open_text(path) as fh:
+        lines = fh.read().splitlines()
+    start = 0
+    for i, line in enumerate(lines):
+        if not line.strip():
+            continue
+        token = line.split(None, 1)[0]
         try:
-            data = np.loadtxt(fh, ndmin=2)
-        except ValueError as exc:
-            raise ParseError(f"{path.name}: could not parse as numeric table ({exc})") from exc
+            float(token)
+            start = i
+        except ValueError:
+            start = i + 1
+        break
+    try:
+        data = np.loadtxt(io.StringIO("\n".join(lines[start:])), ndmin=2)
+    except ValueError as exc:
+        raise ParseError(f"{path.name}: could not parse as numeric table ({exc})") from exc
     if n_cols is not None and data.shape[1] != n_cols:
         raise ParseError(f"{path.name}: expected {n_cols} columns, found {data.shape[1]}")
     if n_rows is not None and data.shape[0] != n_rows:
@@ -106,10 +118,16 @@ def parse_spectra(path: Path) -> SpectraData:
 
 
 def parse_colours(path: Path) -> np.ndarray:
-    """22 columns: log_age, V-I, U, B, V, R, I, J, H, K, ugriz, WFPC2/ACS bands."""
-    data = _load_table(path, n_cols=22, n_rows=N_AGES)
+    """22 columns: log_age, V-I, U, B, V, R, I, J, H, K, ugriz, WFPC2/ACS bands.
+
+    Official v2.2.1 files append extra filter columns (26 total). Keep the
+    documented 22 and ignore the trailing extras.
+    """
+    data = _load_table(path, n_rows=N_AGES)
+    if data.shape[1] < 22:
+        raise ParseError(f"{path.name}: expected at least 22 columns, found {data.shape[1]}")
     _validate_age_column(path, data[:, 0])
-    return data
+    return data[:, :22]
 
 
 def parse_ionizing(path: Path) -> np.ndarray:
@@ -145,6 +163,13 @@ def parse_yields(path: Path) -> np.ndarray:
 def parse_mlratio(path: Path) -> np.ndarray:
     """3 columns: log_age, M/L_K, M/L_V."""
     data = _load_table(path, n_cols=3, n_rows=N_AGES)
+    _validate_age_column(path, data[:, 0])
+    return data
+
+
+def parse_star_counts(path: Path) -> np.ndarray:
+    """21 columns: log_age + 10 spectral types × 2 luminosity bins (L ≷ 4.9)."""
+    data = _load_table(path, n_cols=21, n_rows=N_AGES)
     _validate_age_column(path, data[:, 0])
     return data
 

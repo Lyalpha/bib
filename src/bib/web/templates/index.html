@@ -2,28 +2,27 @@
 {% block title %}Home{% endblock %}
 {% block content %}
 
-<div class="hero">
-  <h1>{{ branding.full_name }}</h1>
-  <p class="tagline">{{ branding.tagline }}</p>
-  <p>
-    <strong>{{ branding.site_name }}</strong> is a point-and-click window onto the
-    <a href="https://bpass.auckland.ac.nz" target="_blank" rel="noopener">BPASS</a> stellar population
-    synthesis models: watch the spectrum of a stellar population evolve over ten billion years,
-    convert it to magnitudes in any filter, and follow individual stars — single and binary —
-    across the Hertzsprung–Russell diagram as they swell, strip and merge.
-    No downloads to parse, no code to write.
-  </p>
-  <div class="cta-row">
-    <a class="btn primary" href="/sed">Open the SED Explorer</a>
-    <a class="btn" href="/hr">Open the HR Explorer</a>
-    <a class="btn ghost" href="/tutorial">New to BPASS? Start here</a>
-  </div>
-  <p>
-    <span class="badge ok">BPASS v2.2.1</span>
-    <span class="badge ok">v2.3 alpha-enhanced grid</span>
-    <span class="badge">data licence CC BY-NC 4.0</span>
-  </p>
+<h1 class="home-title">{{ branding.full_name }}</h1>
+<p class="page-kicker">Visualise stellar evolution in your browser.</p>
+<p class="prose">
+  <strong>{{ branding.site_name }}</strong> reads the released
+  <a href="https://bpass.auckland.ac.nz" target="_blank" rel="noopener">BPASS</a>
+  models in the browser: one population’s spectrum and photometry.
+  It is for teaching and for checking a single case.
+  Scripted or large-scale work belongs in <a href="#hoki">hoki</a> and the BPASS
+  manuals and release papers.
+</p>
+<div class="cta-row">
+  <a class="btn primary" href="/ssp">SSP Explorer</a>
+  <a class="btn ghost" href="/tutorial">Tutorial</a>
+  <a class="btn ghost" href="/request">Request data</a>
+  <a class="btn ghost" href="{% if expose_docs %}/api/docs{% else %}/data#api{% endif %}">Data &amp; API</a>
 </div>
+<p class="prose muted">
+  Loaded releases include BPASS v2.2.1 and the v2.3 α-enhanced grid.
+  The data are licensed
+  <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC&nbsp;BY-NC&nbsp;4.0</a>.
+</p>
 
 <h2>What is BPASS?</h2>
 <p class="prose">
@@ -39,38 +38,32 @@
      target="_blank" rel="noopener">v2.2 user manual</a>.
 </p>
 
-<div class="grid cols-2" style="margin-top: 1.2rem;">
-  <a class="card feature-card" href="/sed">
-    <div class="icon">🌈</div>
-    <h3>SED Explorer</h3>
-    <p class="muted">Plot any simple stellar population at 51 ages from 1&nbsp;Myr to 100&nbsp;Gyr.
-    Press play and watch it evolve. Pin snapshots to compare IMFs, metallicities,
-    alpha enhancement and dust reddening side by side.</p>
-  </a>
-  <a class="card feature-card" href="/hr">
-    <div class="icon">✨</div>
-    <h3>HR Explorer</h3>
-    <p class="muted">Animate individual stellar models across the HR diagram with a live
-    readout of mass, radius and surface composition. A to-scale binary visualizer shows
-    orbits, winds, Roche-lobe overflow and common-envelope events as they happen.</p>
-  </a>
-  <a class="card feature-card" href="/sed#photometry">
-    <div class="icon">📐</div>
-    <h3>Synthetic photometry</h3>
-    <p class="muted">AB magnitudes through bundled filter sets (SDSS, 2MASS, GALEX, LSST,
-    HST, JWST, Gaia…) — or upload your own transmission curve and get magnitudes for it.</p>
-  </a>
-  <a class="card feature-card" href="/data#api">
-    <div class="icon">🔌</div>
-    <h3>REST API</h3>
-    <p class="muted">Everything the interface shows is served as JSON from
-    <code>/api/v1</code> with interactive OpenAPI docs — the seed of a future generic
-    query builder for scripted access.</p>
-  </a>
-</div>
+<h2>In this interface</h2>
+<dl class="contents">
+  <dt><a href="/tutorial">Tutorial</a></dt>
+  <dd>What an SSP is, what the IMF and metallicity labels mean, and how binaries change the light.</dd>
+  <dt><a href="/ssp">SSP Explorer</a></dt>
+  <dd>Spectrum, star counts, supernova rates and ionizing output of one simple stellar population, from 1&nbsp;Myr to 100&nbsp;Gyr. A second population can be pinned for comparison. <a href="/ssp#photometry">Photometry</a> gives AB magnitudes in the bundled filters, or in a transmission curve you upload.</dd>
+  <dt><a href="/request">Request data</a></dt>
+  <dd>Download an SED, photometry, or the other population tables for a chosen IMF, metallicity and age.</dd>
+  <dt><a href="{% if expose_docs %}/api/docs{% else %}/data#api{% endif %}">Data and API</a></dt>
+  <dd>What is loaded on this server, and the same numbers as JSON from <code>/api/v1</code>{% if expose_docs %} (<a href="/api/docs">interactive docs</a>){% endif %}.</dd>
+</dl>
 
-<h2 id="acknowledgement">Acknowledging BPASS</h2>
+<h2 id="hoki">Scripted or large-scale analysis</h2>
 <p class="prose">
+  This site is for one SED or one track at a time. For scripted or large-scale
+  work on the BPASS grids — population synthesis, colour–magnitude diagrams,
+  event rates — use
+  <a href="https://heloises.github.io/hoki/intro.html" target="_blank" rel="noopener">hoki</a>
+  (<a href="https://joss.theoj.org/papers/10.21105/joss.01987" target="_blank" rel="noopener">Stevance, Eldridge &amp; Stanway 2020</a>),
+  the BPASS manuals and the release papers.
+  Install hoki with <code>pip install hoki</code> and cite it with those papers.
+</p>
+
+<div class="prose">
+<h2 id="acknowledgement">Acknowledging BPASS</h2>
+<p>
   BPASS is developed and released on a best-effort basis by a small team. If anything you
   produce with this tool ends up in a paper, talk or classroom, please include the official
   acknowledgement and cite the release papers:
@@ -78,12 +71,35 @@
 {% include "_acknowledgement.html" %}
 
 <h2>Licence</h2>
-<p class="prose">
+<p>
   BPASS data products are released by the BPASS team under
   <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC&nbsp;BY-NC&nbsp;4.0</a>
-  (attribution, non-commercial). {{ branding.site_name }} itself is open source under the MIT
-  licence and is an independent interface, not an official BPASS product — see
-  <a href="/about">About</a> for credits and details.
+  (attribution, non-commercial). This site does not redistribute the release files.
+  {{ branding.site_name }} itself is open source under the MIT licence
+  {% if branding.source_url %}
+  (<a href="{{ branding.source_url }}" target="_blank" rel="noopener">repository</a>)
+  {% endif %}.
+  Bundled filter curves come from the
+  <a href="http://svo2.cab.inta-csic.es/theory/fps/" target="_blank" rel="noopener">Spanish
+  Virtual Observatory Filter Profile Service</a> — cite Rodrigo, Solano &amp; Bayo
+  (2012) and Rodrigo &amp; Solano (2020) if the filter set matters to the work.
 </p>
+
+<h2>Built with</h2>
+<p class="small muted">
+  FastAPI, SQLAlchemy and PostgreSQL on the back end; Plotly.js, htmx and Alpine.js
+  on the front end; <a href="https://numpy.org" target="_blank" rel="noopener">numpy</a>
+  and <a href="https://www.astropy.org" target="_blank" rel="noopener">astropy</a> for the
+  science core, with dust laws via the
+  <a href="https://dust-extinction.readthedocs.io" target="_blank" rel="noopener">dust_extinction</a>
+  package.
+  Built with <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>
+  in late 2026. Please report bugs — especially wrong numbers — as you would for any research tool.
+  {% if branding.source_url %}
+  Open an issue on the
+  <a href="{{ branding.source_url }}" target="_blank" rel="noopener">project repository</a>.
+  {% endif %}
+</p>
+</div>
 
 {% endblock %}

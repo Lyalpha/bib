@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from bib.api.v1.helpers import sig_round
 from bib.db import models as m
 from bib.db.session import get_db
+from bib.science.filters import group_sort_key
+from bib.science.photometry import normalize_transmission
 from bib.science.sed import decode_f64
 
 router = APIRouter()
@@ -16,7 +18,10 @@ router = APIRouter()
 
 @router.get("/filters", summary="List bundled filters")
 def list_filters(db: Session = Depends(get_db)) -> list[dict]:
-    rows = db.scalars(select(m.Filter).order_by(m.Filter.lambda_eff)).all()
+    rows = sorted(
+        db.scalars(select(m.Filter)).all(),
+        key=lambda f: group_sort_key(f.group_name, f.lambda_eff),
+    )
     return [
         {
             "name": f.name,
@@ -45,5 +50,7 @@ def get_filter_curve(name: str, db: Session = Depends(get_db)) -> dict:
         "detector_type": row.detector_type,
         "lambda_eff": row.lambda_eff,
         "wavelength": sig_round(decode_f64(row.wavelength, row.n_points), 6),
-        "transmission": sig_round(decode_f64(row.transmission, row.n_points), 4),
+        "transmission": sig_round(
+            normalize_transmission(decode_f64(row.transmission, row.n_points)), 4
+        ),
     }

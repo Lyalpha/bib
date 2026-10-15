@@ -13,6 +13,11 @@ podman compose up --build     # or: docker compose up --build
 The `Containerfile` is multi-stage (uv-based build, slim runtime) and
 Docker-compatible.
 
+`compose.yaml` is a **sandbox**: user/password `bib`/`bib`. Change those
+before a public deployment, and never publish PostgreSQL port 5432 to the
+host. Public-release ops (systemd, reverse proxy, probes, admin token,
+privacy) are in [Operations](operations.md).
+
 ## Bare metal
 
 For environments where containers are not allowed:
@@ -25,13 +30,27 @@ uv run bib demo-seed        # optional sandbox data
 uv run bib serve
 ```
 
+`bib serve` waits for PostgreSQL (about 45 s) and prints a `podman start bib-pg` hint if the local DSN is on port 5433. Raw uvicorn does not.
+
 Any WSGI-less ASGI setup works too (`uvicorn 'bib.app:create_app' --factory`).
+
+### Unprivileged VM (systemd --user)
+
+`scripts/deploy-vm.sh` rsyncs the tree, creates a `bib_app` Postgres role via
+a privileged admin role (`postgres` by default), installs a systemd **user**
+unit running gunicorn on `127.0.0.1:8001`, and copies an Apache `.htaccess`
+`RewriteRule [P]` into the document root. Details: [Operations](operations.md).
+
+```sh
+./scripts/deploy-vm.sh --host your.server.example --demo-seed
+```
 
 ## Configuration
 
 All settings are environment variables with the `BIB_` prefix (a plain
-`DATABASE_URL` is also accepted); a `.env` file in the working directory is
-read automatically.
+`DATABASE_URL` is also accepted). A `.env` file in the working directory is
+read automatically. On a VM, `~/.config/bib/env` (written by `deploy-vm.sh`,
+used by the systemd unit) is also read; a checkout `.env` overrides it.
 
 | variable | default | purpose |
 |---|---|---|
@@ -40,12 +59,23 @@ read automatically.
 | `BIB_BRANDING_FILE` | — | path to a custom `branding.yaml` |
 | `BIB_DEBUG` | `false` | FastAPI debug mode |
 | `BIB_FILTERS_DIR` | bundled `data/filters` | filter curve directory |
+| `BIB_ADMIN_TOKEN` | empty | shared operator-console secret; **unset ⇒ console routes are not registered (404)** |
+| `BIB_ADMIN_PATH` | `/_ops` | unlisted operator-console path (do not advertise; never put it in `robots.txt`) |
+| `BIB_SENTRY_DSN` | empty | optional Sentry/GlitchTip DSN; requires extra `bib[ops]` (`sentry-sdk`) |
+| `BIB_SENTRY_ENVIRONMENT` | `production` (or `development` if `BIB_DEBUG`) | Sentry environment tag; `SENTRY_ENVIRONMENT` is also accepted |
+| `BIB_ALLOWED_HOSTS` | empty | comma-separated Host allowlist; empty disables the middleware |
+| `BIB_EXPOSE_DOCS` | unset (on) | `/api/docs` and `/api/redoc`; unset means exposed. Set `false` to hide. `/api` and `/api/v1` redirect to the docs when they are on. |
+| `BIB_LOG_JSON` | unset | JSON request logs on stderr; unset means JSON when debug is false |
+| `BIB_RATE_LIMIT_PER_MINUTE` | `40` | in-process token bucket for expensive routes (per process, not clustered) |
+| `BIB_STATS_FLUSH_SECONDS` | `60` | how often allowlisted HTML hit counts flush to `site_daily_stat` |
+| `BIB_FORWARDED_ALLOW_IPS` | `127.0.0.1` | uvicorn `forwarded_allow_ips`; IPs whose `X-Forwarded-*` headers are trusted |
 
 ## Branding
 
 Everything visual that identifies a deployment lives in `branding.yaml`:
-site name, full name, tagline, optional logo, footer note and the full colour
-palette. The palette is injected as CSS custom properties
+site name, full name, tagline, optional logo, optional public `source_url`
+(the git remote — do not serve the live checkout from the app), footer note
+and the full colour palette. The palette is injected as CSS custom properties
 (`--brand-primary`, `--brand-bg`, …) which every stylesheet and plot uses — so
 a deployment can be rebranded without touching the package:
 
@@ -54,6 +84,7 @@ site_name: "starlab"
 full_name: "StarLab Explorer"
 tagline: "Our teaching instance."
 logo: assets/starlab.svg
+source_url: https://example.org/your/bib
 colors:
   primary: "#7c4dff"
   accent: "#ffd166"

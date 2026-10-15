@@ -3,7 +3,10 @@
 {% block content %}
 <div class="prose">
 <h1>Data &amp; API</h1>
-<p class="muted">What this instance has loaded, and how to query it.</p>
+<p class="page-kicker">What this instance has loaded, and how to query it.</p>
+{% if expose_docs %}
+<p style="margin-top:0.2rem;"><a class="btn primary" href="/api/docs">API docs</a></p>
+{% endif %}
 </div>
 
 <h2>Loaded right now</h2>
@@ -24,32 +27,16 @@
     </table>
   </div>
 </div>
-
-<div class="card">
-  <h3>Stellar models</h3>
-  <p class="small muted" style="margin-top:0;">
-    Individual evolutionary tracks. The <strong>id</strong> is used as
-    <code>/api/v1/models/{id}</code>.
-  </p>
-  <div class="table-wrap wide">
-    <table class="data" id="model-table">
-      <thead><tr>
-        <th>id</th><th>Model</th><th>Z</th><th>Kind</th><th>M<sub>1</sub></th><th>q</th><th>log&thinsp;P</th><th>Steps</th><th></th>
-      </tr></thead>
-      <tbody><tr><td colspan="9" class="muted">Loading…</td></tr></tbody>
-    </table>
-  </div>
-</div>
 <p class="small muted">
-  Every ingested item carries provenance (source filename + SHA-256) — query
-  <code>/api/v1/populations/{id}</code> or <code>/api/v1/models/{id}</code> to see it.
+  Every ingested population carries provenance (source filename + SHA-256) — query
+  <code>/api/v1/populations/{id}</code> to see it.
   Rows marked <span class="badge warn">demo</span> are synthetic toy data, not BPASS output.
 </p>
 
 <div class="prose">
-<h2>Where the models come from</h2>
+<h2>Where the data come from</h2>
 <p>
-  Spectra and tracks on this instance are computed from official
+  Spectra on this instance are computed from official
   <a href="https://bpass.auckland.ac.nz" target="_blank" rel="noopener">BPASS</a>
   releases (v2.2.1, and v2.3 where listed above). This site does not
   redistribute those archives.
@@ -65,6 +52,11 @@
 </div>
 
 <h2 id="api">The API</h2>
+<p>
+  <a href="/request">Request data</a> downloads an SED, photometry, or the other
+  population tables for a chosen IMF, metallicity and age
+  (<code>GET /api/v1/export</code>).
+</p>
 <p>
   Everything the UI displays comes from <code>/api/v1</code>{% if expose_docs %} — open the
   interactive <a href="/api/docs">API docs</a>{% endif %}.
@@ -87,12 +79,13 @@
   rel="noopener">CC BY-NC 4.0</a>, © the BPASS team. This interface: MIT. Bundled filter
   transmission curves come from the
   <a href="http://svo2.cab.inta-csic.es/theory/fps/" target="_blank" rel="noopener">SVO Filter
-  Profile Service</a> (see <a href="/about">About</a> for citations).
+  Profile Service</a>. Cite Rodrigo, Solano &amp; Bayo (2012) and Rodrigo &amp; Solano (2020)
+  if the filter set matters to the work.
 </p>
 </div>
 
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="/static/js/data-page.js?v=2"></script>
+<script type="module" src="/static/js/data-page.js?v=3"></script>
 {% endblock %}

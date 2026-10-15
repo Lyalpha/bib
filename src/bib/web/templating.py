@@ -55,9 +55,11 @@ def invalidate_synthetic_cache() -> None:
 
 
 def _site_context(request: Request) -> dict[str, Any]:
+    settings = getattr(request.app.state, "settings", None)
     return {
         "active_path": request.url.path,
         "has_synthetic": has_synthetic_data(),
+        "expose_docs": bool(settings and settings.should_expose_docs),
     }
 
 

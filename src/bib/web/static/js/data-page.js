@@ -54,28 +54,22 @@ function renderExamples(pops) {
     ``,
     `# Absolute AB magnitudes through SDSS g and r for the same SED (source at 10 pc).`,
     `curl -s "${origin}/api/v1/photometry?population_id=${id}&log_age=${logAge}&filters=sdss.g,sdss.r"`,
-    ``,
-    `# Stellar-model search: binary primaries between 10 and 20 M☉ (array of model records).`,
-    `curl -s "${origin}/api/v1/models?kind=primary&m1_min=10&m1_max=20"`,
   ].join("\n");
 }
 
 (async () => {
   const summary = document.getElementById("loaded-summary");
   const popBody = document.querySelector("#pop-table tbody");
-  const modelBody = document.querySelector("#model-table tbody");
   try {
-    const [meta, pops, models] = await Promise.all([
+    const [meta, pops] = await Promise.all([
       apiGet("/meta"),
       apiGet("/populations"),
-      apiGet("/models", { limit: 1000 }),
     ]);
 
     summary.innerHTML =
       meta.releases
         .map((r) => `<span class="badge ok">${esc(r.version)} · ${r.n_populations} populations</span>`)
         .join(" ") +
-      ` <span class="badge">${meta.n_stellar_models} stellar models</span>` +
       (meta.has_synthetic ? ` <span class="badge warn">includes synthetic demo data</span>` : "");
 
     popBody.innerHTML = pops.length
@@ -96,25 +90,10 @@ function renderExamples(pops) {
           .join("")
       : '<tr><td colspan="9" class="muted">Nothing loaded on this instance.</td></tr>';
 
-    modelBody.innerHTML = models.length
-      ? models
-          .map(
-            (mm) => `<tr>
-          <td class="mono">${mm.id}</td>
-          <td class="wrap">${esc(mm.title || mm.filename || "model " + mm.id)}</td>
-          <td>${esc(mm.z_label)}</td><td>${esc(mm.kind)}</td>
-          <td>${mm.m1_init ?? "—"}</td><td>${mm.q_init ?? "—"}</td>
-          <td>${mm.logp_init ?? "—"}</td><td>${mm.n_steps}</td>
-          <td>${mm.is_synthetic ? demoBadge : ""}</td>
-        </tr>`,
-          )
-          .join("")
-      : '<tr><td colspan="9" class="muted">No stellar models loaded.</td></tr>';
-
     renderExamples(pops);
   } catch {
     summary.innerHTML = '<span class="badge warn">database unavailable</span>';
-    popBody.innerHTML = modelBody.innerHTML =
+    popBody.innerHTML =
       '<tr><td colspan="9" class="muted">Could not reach the API.</td></tr>';
     const host = document.getElementById("api-examples");
     if (host) host.textContent = "# Could not reach the API to build examples.";

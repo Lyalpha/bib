@@ -31,19 +31,19 @@ populations:
     imf: imf135_300
     pop_types: [bin, sin]
     metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
-    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
 
   # IMF comparison pair at two metallicities (binary populations).
   - release: "2.2.1"
     imf: imf_chab300
     pop_types: [bin]
     metallicities: [z002, z020]
-    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
   - release: "2.2.1"
     imf: imf100_300
     pop_types: [bin]
     metallicities: [z002, z020]
-    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
 
   # v2.3 alpha-enhancement grids (fiducial IMF, binary populations).
   - release: "2.3"

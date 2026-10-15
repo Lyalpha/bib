@@ -3,8 +3,9 @@
 Everything the interface displays is served from `/api/v1`. Interactive
 OpenAPI documentation lives at `/api/docs` (ReDoc at `/api/redoc`). `/api` and
 `/api/v1` redirect there. Set `BIB_EXPOSE_DOCS=false` to hide the UI (the JSON
-API stays up). The API is deliberately parameter-rich — it is the foundation
-for a future generic query builder.
+API stays up). The API is deliberately parameter-rich. The in-browser
+[request-data page](/request) (`GET /api/v1/export`) is the query builder:
+IMF, metallicity and age in, a file with units and a query header out.
 
 `population_id` is the integer `id` of a loaded simple stellar population
 (one release × IMF × metallicity × binary/single × α-mix). List them with
@@ -29,11 +30,10 @@ the public schema.
 | `GET /api/v1/populations/{id}/hrd` | HRD occupation grids (uint8-quantized, base64) for animation |
 | `GET /api/v1/filters` | bundled filter metadata |
 | `GET /api/v1/filters/{name}/curve` | transmission curve |
+| `GET /api/v1/export/options` | products, unit systems and file formats for the request-data page |
+| `GET /api/v1/export` | download by IMF / Z / age (`product`, `units`, `format=csv\|json\|ecsv\|ascii`) |
 | `GET /api/v1/photometry` | absolute AB magnitudes through bundled filters (`population_id`, `log_age`) |
 | `POST /api/v1/photometry/custom` | upload a transmission curve, get its AB magnitude |
-| `GET /api/v1/models` | stellar-model search (`kind`, `z_label`, `m1_min`, `m1_max`, `curated`) |
-| `GET /api/v1/models/{id}` | model detail + events |
-| `GET /api/v1/models/{id}/track` | decimated, event-preserving track arrays + derived binary geometry |
 
 ## Examples
 
@@ -65,8 +65,11 @@ curl -s "localhost:8000/api/v1/photometry?population_id={id}&log_age=9.0&filters
 curl -s -F "file=@myfilter.txt" -F population_id={id} -F log_age=9.0 \
      localhost:8000/api/v1/photometry/custom | jq .result
 
-# binary primaries between 10 and 20 Msun
-curl -s "localhost:8000/api/v1/models?kind=primary&m1_min=10&m1_max=20" | jq length
+# structured download (Request data page): solar-Z SED, no population_id
+curl -s "localhost:8000/api/v1/export?product=sed&imf=imf135_300&z_label=z020&pop_type=bin&log_age=8.0&format=csv"
+
+# ionizing photons at one age, every loaded Z, physical units (per 1 Msun)
+curl -s "localhost:8000/api/v1/export?product=ionizing&imf=imf135_300&pop_type=bin&all_z=true&log_age=7.0&units=physical&format=json"
 ```
 
 ## Payload conventions

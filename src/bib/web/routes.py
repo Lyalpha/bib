@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
+from fastapi.responses import RedirectResponse
 
 from bib.web.templating import templates
 
@@ -10,6 +11,7 @@ router = APIRouter(include_in_schema=False)
 
 
 @router.get("/")
+@router.get("/index.html")
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html")
 
@@ -19,14 +21,26 @@ async def tutorial(request: Request):
     return templates.TemplateResponse(request, "tutorial.html")
 
 
-@router.get("/sed")
-async def sed_explorer(request: Request):
+@router.get("/ssp")
+async def ssp_explorer(request: Request):
     return templates.TemplateResponse(request, "sed.html")
 
 
+@router.get("/sed")
+async def sed_explorer_redirect():
+    return RedirectResponse("/ssp", status_code=301)
+
+
+@router.get("/star")
 @router.get("/hr")
-async def hr_explorer(request: Request):
-    return templates.TemplateResponse(request, "hr.html")
+async def star_explorer_parked():
+    """Star Explorer is parked until it is finished. The implementation is on the star-explorer branch."""
+    return RedirectResponse("/", status_code=302)
+
+
+@router.get("/request")
+async def request_data_page(request: Request):
+    return templates.TemplateResponse(request, "request.html")
 
 
 @router.get("/data")
@@ -35,5 +49,5 @@ async def data_page(request: Request):
 
 
 @router.get("/about")
-async def about(request: Request):
-    return templates.TemplateResponse(request, "about.html")
+async def about_redirect():
+    return RedirectResponse("/#acknowledgement", status_code=301)

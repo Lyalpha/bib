@@ -1,0 +1,17 @@
+# bib: reverse-proxy to gunicorn on loopback.
+# Copy (do not mv) this file to the Apache document root as .htaccess.
+# Requires mod_rewrite and mod_proxy (the [P] flag). Client 302s to
+# localhost would not work; this is a server-side proxy.
+# Do not set ProxyPreserveHost here: it is not valid in .htaccess and
+# yields HTTP 500. Allow 127.0.0.1 in BIB_ALLOWED_HOSTS instead.
+#
+# Apache DirectoryIndex turns GET / into GET /index.html before [P].
+# Send that URI (and the empty URI) to gunicorn "/" so the homepage is
+# HTML, not FastAPI's JSON 404. Do not set DirectoryIndex here: it needs
+# AllowOverride Indexes, which [P] hosts often do not grant.
+
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ http://127.0.0.1:8001/ [P,L]
+RewriteRule ^$ http://127.0.0.1:8001/ [P,L]
+RewriteRule ^(.*)$ http://127.0.0.1:8001/$1 [P,L]

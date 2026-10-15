@@ -1,12 +1,10 @@
 {% extends "base.html" %}
 {% block title %}SSP Explorer{% endblock %}
-{% block main_class %}wide{% endblock %}
+{% block main_class %}wide split-stage{% endblock %}
 
 {% block content %}
-<div class="row between" style="margin-bottom: 0.6rem;">
-  <h1 style="margin:0;">SSP Explorer</h1>
-  <div class="muted small" id="frame-note">Quantities are for 10<sup>6</sup> M<sub>☉</sub> formed unless rescaled · D<sub>L</sub> = 10 pc · absolute AB magnitudes</div>
-</div>
+<h1 style="margin:0;">SSP Explorer</h1>
+<p class="page-kicker">Follow the evolution of integrated stellar populations.</p>
 
 <div id="error-box" class="synthetic-banner" style="border-radius:10px;" hidden></div>
 
@@ -39,11 +37,12 @@
     <hr style="margin:0.4rem 0;">
 
     <div class="control-group">
-      <label>log<sub>10</sub>(age / yr) <span class="muted" id="age-note"></span></label>
+      <label>log<sub>10</sub>(age / yr) <span class="muted" id="age-note"></span><span class="cosmo-bang" id="age-bang" hidden>!</span></label>
       <div class="control-inline">
-        <input type="range" id="sl-age" min="0" max="50" step="0.1" value="20" style="--fill: 40%">
+        <input type="range" id="sl-age" min="0" max="41.3" step="0.1" value="20" style="--fill: 48%">
         <output id="out-age">8.0</output>
       </div>
+      <span class="small muted">Playback stops at log age 10.13, about the age of the Universe. The API still returns the grid out to 11.</span>
     </div>
     <div class="control-group">
       <label>Formed mass (M<sub>☉</sub>)</label>
@@ -54,9 +53,9 @@
     </div>
 
     <div class="control-group">
-      <label>Redshift <span class="muted" id="cosmo-note" title="flat ΛCDM, H₀=70 km/s/Mpc, Ωm=0.3">z</span></label>
+      <label>Redshift <span class="muted" id="cosmo-note" title="flat ΛCDM, H₀=70 km/s/Mpc, Ωm=0.3">z</span><span class="cosmo-bang" id="z-bang" hidden>!</span></label>
       <div class="control-inline">
-        <input type="range" id="sl-redshift" min="0" max="10" step="0.05" value="0" style="--fill: 0%">
+        <input type="range" id="sl-redshift" min="0" max="300" step="1" value="0" style="--fill: 0%">
         <output id="out-redshift">0.00</output>
       </div>
       <span class="small muted" id="dl-note">D<sub>L</sub> = 10 pc · absolute mags</span>
@@ -71,9 +70,9 @@
     </div>
 
     <div class="control-group">
-      <label>Dust law</label>
+      <label>Dust extinction <span class="hint" title="Extinguishes the SED: the spectrum is multiplied by this curve at the chosen E(B−V). A foreground screen, not attenuation, and the removed light is not reprocessed.">?</span></label>
       <select id="sel-dust">
-        <option value="">No dust</option>
+        <option value="">No extinction</option>
       </select>
     </div>
     <div class="control-group" id="grp-ebv" hidden>
@@ -126,12 +125,13 @@
     </details>
   </aside>
 
-  <section style="display:flex; flex-direction:column; gap:0.8rem; min-width:0;">
+  <section class="explorer-main">
     <div class="playback" id="sed-playbar">
       <button class="icon-btn" data-role="rewind" title="Back to the first age">⏮</button>
       <button class="icon-btn primary" data-role="play" title="Play">▶</button>
       <input type="range" class="scrub" data-role="scrub" min="0" max="1000" value="400" style="--fill: 40%">
       <span class="readout" data-role="readout"></span>
+      <span class="cosmo-bang" id="play-bang" hidden>!</span>
       <label class="small muted">speed</label>
       <input type="range" class="speed" data-role="speed" min="-2" max="3" step="0.25" value="0" style="--fill: 40%">
       <span class="small" data-role="speed-out">1×</span>
@@ -230,5 +230,5 @@
 
 {% block scripts %}
 <script src="/static/vendor/plotly-4.1.0.min.js"></script>
-<script type="module" src="/static/js/sed.js?v=11"></script>
+<script type="module" src="/static/js/sed.js?v=23"></script>
 {% endblock %}

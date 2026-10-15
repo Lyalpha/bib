@@ -3,8 +3,7 @@
 **bib** is a pedagogical web interface for exploring [BPASS](https://bpass.auckland.ac.nz)
 (Binary Population and Spectral Synthesis) results: interactive spectral energy
 distributions of simple stellar populations, synthetic photometry in standard or
-user-supplied filters, dust attenuation, and animated Hertzsprung–Russell diagram
-evolution of individual stellar models and binary pairs.
+user-supplied filters, and dust extinction of the SED.
 
 - Grounded in the **BPASS v2.2.1** data release, extended with the **v2.3**
   alpha-enhancement spectral grids.
@@ -39,22 +38,56 @@ export DATABASE_URL="postgresql+psycopg://bib:bib@localhost:5432/bib"
 uv run bib init-db
 uv run bib demo-seed
 uv run bib serve
+# later: uv run bib down    # stops the web process only, not Postgres
 ```
+
+On a host where you cannot use containers or root systemd:
+
+```sh
+./scripts/deploy-vm.sh --host your.server.example --demo-seed
+```
+
+That uses PostgreSQL on the server (a `bib_app` role created via a privileged
+admin role, never stored in the app env), gunicorn on loopback port 8001, and
+an Apache `.htaccess` proxy. See `docs/operations.md`.
 
 ## Ingesting real BPASS data
 
-Download the BPASS v2.2.1 (and optionally v2.3) products from the
-[BPASS site](https://bpass.auckland.ac.nz) or the
-[Warwick mirror](https://warwick.ac.uk/bpass) into a directory, then:
+A public instance should already have data loaded. This section is for
+operators who want to host their own copy. bib never redistributes BPASS
+files — download the releases yourself:
+
+- [BPASS v2.2.1](https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/)
+  — population synthesis + stellar models (primary release).
+- [BPASS v2.3](https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/bpassv2p3/)
+  — alpha-enhanced spectral synthesis extension.
+- [bpass.auckland.ac.nz](https://bpass.auckland.ac.nz) — project home.
+
+The full releases are large (hundreds of GB with individual stellar models).
+You only need the files named in your ingest manifest. Official IMF tarballs
+(`bpass_v2.2.1_imf*.tar.gz`) can stay packed.
 
 ```sh
+# create / upgrade the schema and load the bundled filter curves
+uv run bib init-db
+
+# instant sandbox without any downloads (adds the warning banner)
+uv run bib demo-seed
+
+# pedagogical SED grid: v2.2.1, 100 M☉ IMFs (imf135_100 + imf_chab100)
+uv run bib ingest --source /path/to/bpass-downloads --manifest src/bib/ingest/sed-100.yaml
+
+# larger curated subset (default if you omit --manifest)
 uv run bib ingest --source /path/to/bpass-downloads
+
+# what ended up in the database?
+uv run bib info
 ```
 
-The default manifest (`src/bib/ingest/golden.yaml`) ingests the curated "golden
-subset" used for demonstrations; edit or supply your own with `--manifest`.
-See `docs/` for the full ingestion guide, file layout expectations, and the
-science notes (units, magnitude systems, dust laws, event heuristics).
+Re-runs are idempotent; use `--replace` to force re-ingestion. See
+`docs/ingestion.md` for manifests, file layout, and the usual 100 M☉ load.
+Science notes (units, magnitude systems, dust laws, event heuristics) live
+in `docs/science-notes.md`.
 
 ## Development
 
@@ -70,4 +103,4 @@ Documentation sources live in `docs/` (`uv run mkdocs serve`).
 ## Licence
 
 bib itself is MIT licensed. BPASS data remain licensed CC BY-NC 4.0 by the
-BPASS team — see `LICENSE` and the in-app Data & Resources page.
+BPASS team — see `LICENSE` and the acknowledgement on the home page.

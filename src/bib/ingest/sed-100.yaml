@@ -1,0 +1,38 @@
+# Pedagogical SED grid: BPASS v2.2.1, 100 M☉ upper-mass cap only.
+#
+# Fiducial broken power-law (imf135_100) and Chabrier (imf_chab100),
+# binary + single, every metallicity. Spectra are required; the smaller
+# per-age tables come along for free.
+#
+# Point --source at a folder of official IMF tarballs, e.g.
+#   BPASS v2.2.1 full release/bpass_v2.2.1_imf135_100.tar.gz
+#   BPASS v2.2.1 full release/bpass_v2.2.1_imf_chab100.tar.gz
+# Unpacked .dat / .dat.gz files work too. Do not ingest the 300 M☉ tarballs
+# for this load — they are a different IMF grid.
+#
+#   uv run bib ingest -s /path/to/BPASS\ v2.2.1\ full\ release \
+#                     -m src/bib/ingest/sed-100.yaml
+
+releases:
+  "2.2.1":
+    name: "Tuatara"
+    url: "https://bpass.auckland.ac.nz"
+    citation: >-
+      Eldridge, Stanway et al. (2017), PASA 34, e058;
+      Stanway & Eldridge (2018), MNRAS 479, 75.
+    notes: >-
+      v2.2.1 population SEDs with a 100 M☉ IMF upper-mass cap
+      (imf135_100 and imf_chab100).
+
+populations:
+  - release: "2.2.1"
+    imf: imf135_100
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
+
+  - release: "2.2.1"
+    imf: imf_chab100
+    pop_types: [bin, sin]
+    metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
+    products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]

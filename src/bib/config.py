@@ -36,6 +36,7 @@ class Branding(BaseModel):
     full_name: str = "BPASS-in-Browser"
     tagline: str = "Explore binary stellar populations, interactively."
     logo: str | None = None
+    source_url: str | None = None
     colors: dict[str, str] = Field(default_factory=lambda: dict(DEFAULT_COLORS))
     footer_note: str = ""
 
@@ -46,10 +47,23 @@ class Branding(BaseModel):
         return "\n    ".join(lines)
 
 
+# User-level file written by scripts/deploy-vm.sh (systemd EnvironmentFile).
+_USER_ENV = Path.home() / ".config" / "bib" / "env"
+
+
+def _settings_env_files() -> tuple[Path, str]:
+    """Deploy env first, then cwd ``.env`` (later file wins). Missing files are skipped."""
+    return (_USER_ENV, ".env")
+
+
 class Settings(BaseSettings):
     """Runtime settings. Every field can be set via ``BIB_*`` env vars."""
 
-    model_config = SettingsConfigDict(env_prefix="BIB_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="BIB_",
+        env_file=(_USER_ENV, ".env"),
+        extra="ignore",
+    )
 
     database_url: str = Field(
         default="postgresql+psycopg://bib:bib@localhost:5432/bib",
@@ -63,6 +77,67 @@ class Settings(BaseSettings):
     # Directory holding bundled filter transmission curves.
     filters_dir: Path = _REPO_ROOT / "data" / "filters"
 
+    admin_path: str = "/_ops"
+    admin_token: str = ""
+    sentry_dsn: str = Field(
+        default="",
+        validation_alias=AliasChoices("BIB_SENTRY_DSN", "SENTRY_DSN"),
+    )
+    sentry_environment: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BIB_SENTRY_ENVIRONMENT", "SENTRY_ENVIRONMENT"),
+    )
+    allowed_hosts: str = ""
+    expose_docs: bool | None = None
+    log_json: bool | None = None
+    rate_limit_per_minute: int = 40
+    stats_flush_seconds: int = 60
+    # Comma-separated IPs uvicorn trusts for X-Forwarded-* (default: local proxy).
+    forwarded_allow_ips: str = "127.0.0.1"
+
+    @property
+    def normalized_admin_path(self) -> str:
+        raw = (self.admin_path or "/_ops").strip() or "/_ops"
+        if not raw.startswith("/"):
+            raw = f"/{raw}"
+        raw = raw.rstrip("/") or "/_ops"
+        if raw in {
+            "/",
+            "/api",
+            "/static",
+            "/ssp",
+            "/sed",
+            "/hr",
+            "/star",
+            "/about",
+            "/data",
+            "/tutorial",
+        }:
+            return "/_ops"
+        return raw
+
+    @property
+    def allowed_host_list(self) -> list[str]:
+        return [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]
+
+    @property
+    def should_expose_docs(self) -> bool:
+        if self.expose_docs is None:
+            return True
+        return self.expose_docs
+
+    @property
+    def should_log_json(self) -> bool:
+        if self.log_json is None:
+            return not self.debug
+        return self.log_json
+
+    @property
+    def sentry_environment_name(self) -> str:
+        if self.sentry_environment:
+            return self.sentry_environment.strip()
+        return "development" if self.debug else "production"
+
     def load_branding(self) -> Branding:
         candidates = [self.branding_file] if self.branding_file else []
         candidates += [Path.cwd() / "branding.yaml", _REPO_ROOT / "branding.yaml"]
@@ -75,7 +150,7 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    return Settings(_env_file=_settings_env_files())
 
 
 @lru_cache(maxsize=1)

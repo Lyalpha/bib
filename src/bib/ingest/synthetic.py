@@ -22,7 +22,12 @@ from sqlalchemy.orm import Session
 from bib.db import models as m
 from bib.db.session import session_scope
 from bib.ingest.parsers import ALPHA_VALUES, Z_VALUES, ModelName, TrackData
-from bib.ingest.run import _get_or_create_grid, _insert_model, _insert_product_rows
+from bib.ingest.run import (
+    _get_or_create_grid,
+    _insert_model,
+    _insert_product_rows,
+    _product_present,
+)
 from bib.science import sed as sedlib
 
 RELEASE_VERSION = "demo"
@@ -135,6 +140,7 @@ def _derived_tables(wl: np.ndarray, seds: np.ndarray, binary: bool) -> dict[str,
     supernova = np.zeros((n, 18))
     yields = np.zeros((n, 9))
     mlratio = np.zeros((n, 3))
+    numbers = np.zeros((n, 21))
 
     for i, la in enumerate(ages):
         flux = seds[i]
@@ -194,9 +200,22 @@ def _derived_tables(wl: np.ndarray, seds: np.ndarray, binary: bool) -> dict[str,
         lk = 10.0 ** (-0.4 * (colours[i, 9] - 3.27))
         mlratio[i] = [la, live / max(lk, 1.0), live / max(lv, 1.0)]
 
+        young = np.exp(-0.5 * ((la - 6.35) / 0.35) ** 2)
+        mid = np.exp(-0.5 * ((la - 7.15) / 0.45) ** 2)
+        cool = np.clip((la - 7.4) / 2.2, 0, 1)
+        wr = 80.0 * young * (2.2 if binary else 1.0)
+        numbers[i] = [
+            la,
+            900 * young, 50 * young, 1800 * mid, 400 * mid, 30 * mid,
+            120 * cool, 80 * cool, 0.35 * wr, 0.45 * wr, 0.20 * wr,
+            200 * young, 8 * young, 4000 * mid, 2500 * (0.3 + cool), 10 * cool,
+            40 * cool, 25 * cool, 0.05 * wr, 0.08 * wr, 0.02 * wr,
+        ]
+
     return {
         "colours": colours, "ionizing": ionizing, "starmass": starmass,
         "supernova": supernova, "yields": yields, "mlratio": mlratio,
+        "numbers": numbers,
     }
 
 
@@ -699,7 +718,7 @@ def _seed_populations(session: Session, console: Console) -> None:
             sha256=None,
             is_synthetic=True,
             extra={"products": ["spectra", "colours", "ionizing", "starmass",
-                                "supernova", "yields", "mlratio"]},
+                                "supernova", "yields", "mlratio", "numbers"]},
         )
         session.add(population)
         session.flush()
@@ -764,6 +783,65 @@ def _seed_models(session: Session, console: Console) -> None:
         console.print(f"  model {name.raw} [green]seeded[/green] ({track.n_steps} steps)")
 
 
+_DEMO_PRODUCTS = (
+    "colours",
+    "ionizing",
+    "starmass",
+    "supernova",
+    "yields",
+    "mlratio",
+    "numbers",
+)
+
+
+def _fill_missing_demo_products(session: Session, console: Console) -> int:
+    """Add newly-introduced per-age tables to existing synthetic populations."""
+    filled = 0
+    pops = session.scalars(select(m.Population).where(m.Population.is_synthetic)).all()
+    for pop in pops:
+        missing = [p for p in _DEMO_PRODUCTS if not _product_present(session, pop.id, p)]
+        if not missing:
+            continue
+        sed_rows = session.scalars(
+            select(m.Sed).where(m.Sed.population_id == pop.id).order_by(m.Sed.age_index)
+        ).all()
+        grid = session.get(m.WavelengthGrid, pop.native_grid_id)
+        if grid is None or len(sed_rows) != 51:
+            continue
+        wl = sedlib.decode_f64(grid.data, grid.n_points)
+        seds = np.stack([sedlib.decode_f32(row.flux, row.n_points) for row in sed_rows])
+        tables = _derived_tables(wl, seds, binary=pop.pop_type == "bin")
+        extra = dict(pop.extra or {})
+        loaded = list(extra.get("products") or [])
+        for product in missing:
+            _insert_product_rows(session, pop.id, product, tables[product])
+            if product not in loaded:
+                loaded.append(product)
+            filled += 1
+        pop.extra = {**extra, "products": loaded}
+        console.print(f"  demo pop {pop.id}: filled {', '.join(missing)}")
+    return filled
+
+
+def purge_demo(*, console: Console | None = None) -> None:
+    """Delete synthetic populations, models, and the demo release. Does not reseed."""
+    console = console or Console()
+    with session_scope() as session:
+        pops = session.execute(
+            delete(m.Population).where(m.Population.is_synthetic)
+        ).rowcount
+        models = session.execute(
+            delete(m.StellarModel).where(m.StellarModel.is_synthetic)
+        ).rowcount
+        session.execute(delete(m.Release).where(m.Release.version == RELEASE_VERSION))
+    from bib.web.templating import invalidate_synthetic_cache
+
+    invalidate_synthetic_cache()
+    console.print(
+        f"[green]removed synthetic demo data[/green] ({pops} population(s), {models} model(s))"
+    )
+
+
 def seed_demo(force: bool = False, console: Console | None = None) -> None:
     console = console or Console()
     from bib.db.bootstrap import init_database
@@ -776,7 +854,11 @@ def seed_demo(force: bool = False, console: Console | None = None) -> None:
         )
         if existing is not None:
             if not force:
-                console.print("[yellow]demo data already present — use --force to reseed[/yellow]")
+                filled = _fill_missing_demo_products(session, console)
+                if filled:
+                    console.print(f"[green]filled missing demo products[/green] ({filled} table(s))")
+                else:
+                    console.print("[yellow]demo data already present — use --force to reseed[/yellow]")
                 return
             console.print("removing existing synthetic data...")
             session.execute(

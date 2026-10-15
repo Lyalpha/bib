@@ -10,7 +10,7 @@
  *   - compact companions (secondary tracks) render as a white-dwarf/NS point.
  *
  * The page pushes state with setState(); the viz runs its own rAF loop so the
- * orbit keeps turning even while track playback is paused.
+ * orbit keeps turning even while track playback is paused (unless frozen).
  */
 "use strict";
 
@@ -51,6 +51,7 @@ export class BinaryViz {
     this.angle = 0;
     this.scale = 1; // px per Rsun (smoothed)
     this.orbitBoost = 1; // user speed multiplier
+    this.orbitFrozen = false;
     this.fitMode = "auto"; // 'auto' | 'true'
     this.particles = [];
     this.envelopePulse = 0;
@@ -94,7 +95,13 @@ export class BinaryViz {
   _step(dt) {
     const s = this.state;
     if (!s) return;
-    if (s.mode === "binary" && isFinite(s.periodYr) && s.periodYr > 0) {
+    if (
+      !this.orbitFrozen &&
+      this.orbitBoost > 0 &&
+      s.mode === "binary" &&
+      isFinite(s.periodYr) &&
+      s.periodYr > 0
+    ) {
       // Real period, sped up: aim for visible rotation (~1/40 yr of model time
       // per second of wall time at boost 1), clamped to a watchable range.
       let revPerSec = 0.025 / s.periodYr;
@@ -322,25 +329,31 @@ export class BinaryViz {
         else ctx.lineTo(xx, yy);
       }
       ctx.closePath();
-      const grad = ctx.createRadialGradient(-r * 0.25, -r * 0.25, r * 0.15, 0, 0, r * (1 + k));
-      grad.addColorStop(0, "rgba(255,255,255,0.9)");
-      grad.addColorStop(0.25, colour);
-      grad.addColorStop(1, this._darken(colour, 0.45));
-      ctx.fillStyle = grad;
+      ctx.fillStyle = this._sphereFill(-r * 0.18, -r * 0.18, r * (1 + k), colour);
       ctx.fill();
       ctx.restore();
       return;
     }
     ctx.restore();
 
-    const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.12, x, y, r);
-    grad.addColorStop(0, "rgba(255,255,255,0.92)");
-    grad.addColorStop(0.3, colour);
-    grad.addColorStop(1, this._darken(colour, 0.5));
-    ctx.fillStyle = grad;
+    ctx.fillStyle = this._sphereFill(x, y, r, colour);
     ctx.beginPath();
     ctx.arc(x, y, r, 0, 2 * Math.PI);
     ctx.fill();
+  }
+
+  /** Soft limb-darkening, no specular highlight — a matte sphere. */
+  _sphereFill(x, y, r, colour) {
+    const lit = this._mix(colour, [255, 255, 255], 0.16);
+    const limb = this._darken(colour, 0.7);
+    const grad = this.ctx.createRadialGradient(
+      x - r * 0.18, y - r * 0.2, r * 0.12,
+      x, y, r,
+    );
+    grad.addColorStop(0, lit);
+    grad.addColorStop(0.58, colour);
+    grad.addColorStop(1, limb);
+    return grad;
   }
 
   _drawCompact(x, y, s) {
@@ -366,6 +379,11 @@ export class BinaryViz {
   _darken(rgb, factor) {
     const m = rgb.match(/\d+/g).map(Number);
     return `rgb(${m.map((v) => Math.round(v * factor)).join(",")})`;
+  }
+
+  _mix(rgb, other, t) {
+    const a = rgb.match(/\d+/g).map(Number);
+    return `rgb(${a.map((v, i) => Math.round(v + (other[i] - v) * t)).join(",")})`;
   }
 
   _drawScaleBar() {

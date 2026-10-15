@@ -1,9 +1,9 @@
-/* HR Explorer: animated stellar tracks on the HRD + binary visualiser + readout. */
+/* Star Explorer: animated stellar tracks on the HRD + binary visualiser + readout. */
 "use strict";
 
 import { apiGet, decodeB64U8, reportError } from "./api.js";
 import { BinaryViz } from "./binaryviz.js";
-import { PlaybackClock, attachPlaybar, lerp, locate } from "./playback.js";
+import { PlaybackClock, attachPlaybar, lerp, locate, syncAllRangeFills, syncRangeFill } from "./playback.js";
 
 const $ = (id) => document.getElementById(id);
 const css = (name) =>
@@ -213,7 +213,8 @@ function renderHrd(fidx) {
   const n = arr("age_yr").length;
   const idx = Math.floor(fidx);
   const text = css("--brand-text") || "#e7ecf3";
-  const grid = css("--brand-border") || "#2a3348";
+  const grid = "rgba(154, 167, 199, 0.16)";
+  const border = css("--brand-border") || "#2a3348";
   const primary = css("--brand-primary") || "#5aa9ff";
   const accent = css("--brand-accent") || "#ffb454";
   const ranges = trackRanges();
@@ -318,16 +319,23 @@ function renderHrd(fidx) {
         title: { text: "log₁₀ T_eff (K)" },
         range: ranges.x,
         gridcolor: grid,
+        gridwidth: 1,
         zeroline: false,
       },
       yaxis: {
         title: { text: "log₁₀ L (L☉)" },
         range: ranges.y,
         gridcolor: grid,
+        gridwidth: 1,
         zeroline: false,
       },
       showlegend: false,
       hovermode: "closest",
+      hoverlabel: {
+        bgcolor: "#141b30",
+        bordercolor: border,
+        font: { color: text, size: 12 },
+      },
     },
     { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] }
   );
@@ -508,6 +516,13 @@ $("sl-orbit").addEventListener("input", () => {
   const boost = Math.pow(2, Number($("sl-orbit").value));
   state.viz.orbitBoost = boost;
   $("out-orbit").textContent = `${boost >= 1 ? boost.toFixed(1) : boost.toFixed(2)}×`;
+  syncRangeFill($("sl-orbit"));
+});
+$("chk-orbit-stop").addEventListener("change", () => {
+  const frozen = $("chk-orbit-stop").checked;
+  state.viz.orbitFrozen = frozen;
+  $("sl-orbit").disabled = frozen;
 });
 
+syncAllRangeFills();
 init();

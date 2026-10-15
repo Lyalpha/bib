@@ -109,6 +109,9 @@ def main() -> int:
                 continue
             order = np.argsort(wl)
             wl, tr = wl[order], np.clip(tr[order], 0.0, None)
+            peak = float(tr.max()) if tr.size else 0.0
+            if peak > 0:
+                tr = tr / peak
             detector = params.get("DetectorType")
             detector_type = "photon" if str(detector) in ("1", "1.0") else "energy"
             csv_path = OUT_DIR / f"{name}.csv"

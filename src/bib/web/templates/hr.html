@@ -1,12 +1,10 @@
 {% extends "base.html" %}
-{% block title %}HR Explorer{% endblock %}
-{% block main_class %}wide{% endblock %}
+{% block title %}Star Explorer{% endblock %}
+{% block main_class %}wide split-stage{% endblock %}
 
 {% block content %}
-<div class="row between" style="margin-bottom: 0.6rem;">
-  <h1 style="margin:0;">HR Explorer</h1>
-  <div class="muted small">Watch individual stellar models evolve across the Hertzsprung–Russell diagram</div>
-</div>
+<h1 style="margin:0;">Star Explorer</h1>
+<p class="page-kicker">Follow the evolution of individual stellar models.</p>
 
 <div id="error-box" class="synthetic-banner" style="border-radius:10px;" hidden></div>
 
@@ -44,9 +42,13 @@
     <div class="control-group">
       <label>Orbit display speed</label>
       <div class="control-inline">
-        <input type="range" id="sl-orbit" min="-1" max="3" step="0.25" value="0.5">
+        <input type="range" id="sl-orbit" min="-1" max="3" step="0.25" value="0.5" style="--fill: 37.5%">
         <output id="out-orbit">1.4×</output>
       </div>
+      <label class="row" style="text-transform:none; letter-spacing:0; margin-top:0.35rem;">
+        <input type="checkbox" id="chk-orbit-stop" style="width:auto;">
+        <span>Stop orbital motion</span>
+      </label>
     </div>
     <div class="control-group">
       <label class="row" style="text-transform:none; letter-spacing:0;">
@@ -62,14 +64,14 @@
     </details>
   </aside>
 
-  <section style="display:flex; flex-direction:column; gap:0.8rem; min-width:0;">
+  <section class="explorer-main">
     <div class="playback" id="hr-playbar">
       <button class="icon-btn" data-role="rewind" title="Back to ZAMS">⏮</button>
       <button class="icon-btn primary" data-role="play" title="Play">▶</button>
-      <input type="range" class="scrub" data-role="scrub" min="0" max="1000" value="0">
+      <input type="range" class="scrub" data-role="scrub" min="0" max="1000" value="0" style="--fill: 0%">
       <span class="readout" data-role="readout"></span>
       <label class="small muted">speed</label>
-      <input type="range" class="speed" data-role="speed" min="-2" max="3" step="0.25" value="0">
+      <input type="range" class="speed" data-role="speed" min="-2" max="3" step="0.25" value="0" style="--fill: 40%">
       <span class="small" data-role="speed-out">1×</span>
     </div>
 
