@@ -24,7 +24,7 @@
     <span class="brand-sub">{{ branding.full_name }}</span>
   </a>
   <nav class="site-nav">
-    {% for href, label in [("/", "Home"), ("/ssp", "SSP Explorer"), ("/tutorial", "Tutorial"), ("/request", "Request data"), ("/data", "Data & API")] %}
+    {% for href, label in [("/", "Home"), ("/ssp", "SSP Explorer"), ("/tutorial", "Tutorial"), ("/request", "Fetch data"), ("/data", "Data & API")] %}
       <a href="{{ href }}" {% if active_path == href %}class="active"{% endif %}>{{ label }}</a>
     {% endfor %}
   </nav>

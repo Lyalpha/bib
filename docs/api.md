@@ -65,7 +65,7 @@ curl -s "localhost:8000/api/v1/photometry?population_id={id}&log_age=9.0&filters
 curl -s -F "file=@myfilter.txt" -F population_id={id} -F log_age=9.0 \
      localhost:8000/api/v1/photometry/custom | jq .result
 
-# structured download (Request data page): solar-Z SED, no population_id
+# structured download (Fetch data page): solar-Z SED, no population_id
 curl -s "localhost:8000/api/v1/export?product=sed&imf=imf135_300&z_label=z020&pop_type=bin&log_age=8.0&format=csv"
 
 # ionizing photons at one age, every loaded Z, physical units (per 1 Msun)

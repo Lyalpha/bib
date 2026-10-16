@@ -121,9 +121,10 @@ def test_api_v1_root_redirects_to_docs(client, path):
 
 def test_landing_and_data_link_api_docs(client):
     home = client.get("/").text
-    assert 'href="/api/docs"' in home
+    assert 'class="btn ghost" href="/data"' in home
     assert "SSP Explorer" in home
-    assert "Request data" in home
+    assert "Fetch data" in home
+    assert "Request data" not in home
     assert "Star Explorer" not in home
     assert "HR Explorer" not in home
 

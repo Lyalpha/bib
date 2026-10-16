@@ -15,8 +15,8 @@
 <div class="cta-row">
   <a class="btn primary" href="/ssp">SSP Explorer</a>
   <a class="btn ghost" href="/tutorial">Tutorial</a>
-  <a class="btn ghost" href="/request">Request data</a>
-  <a class="btn ghost" href="{% if expose_docs %}/api/docs{% else %}/data#api{% endif %}">Data &amp; API</a>
+  <a class="btn ghost" href="/request">Fetch data</a>
+  <a class="btn ghost" href="/data">Data &amp; API</a>
 </div>
 <p class="prose muted">
   Loaded releases include BPASS v2.2.1 and the v2.3 α-enhanced grid.
@@ -44,9 +44,9 @@
   <dd>What an SSP is, what the IMF and metallicity labels mean, and how binaries change the light.</dd>
   <dt><a href="/ssp">SSP Explorer</a></dt>
   <dd>Spectrum, star counts, supernova rates and ionizing output of one simple stellar population, from 1&nbsp;Myr to 100&nbsp;Gyr. A second population can be pinned for comparison. <a href="/ssp#photometry">Photometry</a> gives AB magnitudes in the bundled filters, or in a transmission curve you upload.</dd>
-  <dt><a href="/request">Request data</a></dt>
+  <dt><a href="/request">Fetch data</a></dt>
   <dd>Download an SED, photometry, or the other population tables for a chosen IMF, metallicity and age.</dd>
-  <dt><a href="{% if expose_docs %}/api/docs{% else %}/data#api{% endif %}">Data and API</a></dt>
+  <dt><a href="/data">Data and API</a></dt>
   <dd>What is loaded on this server, and the same numbers as JSON from <code>/api/v1</code>{% if expose_docs %} (<a href="/api/docs">interactive docs</a>){% endif %}.</dd>
 </dl>
 

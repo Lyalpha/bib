@@ -40,7 +40,7 @@ the operator's view of the two explorers.
    (wavelength [Å], transmission).
 9. **Export** — PNG of the SED plot; CSV/JSON of the spectrum at full native
    resolution (display plots use a rebinned copy, downloads never do). For
-   tables with units and a query header, use [Request data](/request)
+   tables with units and a query header, use [Fetch data](/request)
    (`GET /api/v1/export`). Add a product in `bib.export.catalog` when the
    explorer grows — the page reads that list.
 

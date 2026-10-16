@@ -142,7 +142,7 @@ def test_export_products_bundle(api_client, export_sel):
 
 def test_request_page_renders(client):
     html = client.get("/request").text
-    assert "Request data" in html
+    assert "Fetch data" in html
     assert "As published" in html
     assert "Physical" in html
     assert 'id="btn-download"' in html
