@@ -16,6 +16,10 @@ def test_page_renders(client, path):
     assert "BPASS-in-Browser" in response.text
 
 
+def test_hrd_route_is_not_registered(client):
+    assert client.get("/api/v1/populations/1/hrd").status_code == 404
+
+
 def test_ssp_page_is_ssp_explorer(client):
     html = client.get("/ssp").text
     assert "SSP Explorer" in html

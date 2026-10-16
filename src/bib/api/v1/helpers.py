@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import base64
-
 import numpy as np
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -46,25 +44,6 @@ def sig_round(values: np.ndarray, digits: int = 4) -> list[float]:
     out[finite] = np.round(a[finite] * scale) / scale
     out[~np.isfinite(a)] = np.nan
     return [None if not np.isfinite(v) else float(v) for v in out]
-
-
-def encode_u8_log(grid: np.ndarray, global_max: float, floor_ratio: float = 1e-4) -> str:
-    """Quantize a non-negative grid to log-scaled uint8 and base64-encode it.
-
-    0 = empty; 1..255 spans log10(global_max * floor_ratio) .. log10(global_max).
-    """
-    if global_max <= 0:
-        return base64.b64encode(np.zeros(grid.size, dtype=np.uint8).tobytes()).decode()
-    lo = np.log10(global_max * floor_ratio)
-    hi = np.log10(global_max)
-    with np.errstate(divide="ignore"):
-        logs = np.log10(np.clip(grid, 0.0, None))
-    q = np.zeros(grid.shape, dtype=np.uint8)
-    mask = logs > lo
-    q[mask] = np.clip(
-        1 + np.round(254 * (logs[mask] - lo) / max(hi - lo, 1e-12)), 1, 255
-    ).astype(np.uint8)
-    return base64.b64encode(q.tobytes()).decode()
 
 
 def get_population_or_404(session: Session, population_id: int) -> m.Population:

@@ -57,15 +57,12 @@ Rsync only (no uv, database, systemd, or `.htaccess`):
 ./scripts/deploy-vm.sh --host your.server.example --sync-only
 ```
 
-The source remote is the private Origin repo
-`https://origin.cursor.com/joe-lyman/bib.git`. `main` is the teaching
-release. `star-explorer` keeps the parked Star Explorer. Once `~/bib` is a
-clone of that remote, ship code with a fast-forward pull instead of rsync
-(`.env` and `~/.config/bib/env` stay outside the checkout):
+Once `~/bib` is a git clone, ship code with a fast-forward pull instead of
+rsync (`.env` and `~/.config/bib/env` stay outside the checkout):
 
 ```sh
 cd ~/bib
-git pull --ff-only origin main
+git pull --ff-only
 uv sync --frozen --python 3.12 --extra prod
 uv run --frozen --extra prod bib init-db
 systemctl --user restart bib

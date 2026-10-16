@@ -8,8 +8,10 @@ the operator's view of the two explorers.
 1. **Select a population** — release, single/binary, IMF, metallicity, and (for
    v2.3 populations) the alpha-enhancement mix. Selectors cascade: only
    combinations that exist in the database are offered.
-2. **Age** — slider over the 51-point grid, log(age/yr) = 6.0–11.0 in 0.1 dex
-   steps. The **play** button animates through the grid; the speed slider sets
+2. **Age** — the slider, playback, and property plots stop at
+   log(age/yr) = 10.13, about the age of the Universe. Fetch data and the API
+   still return the published grid from 6.0 to 11.0 in 0.1 dex steps. The
+   **play** button animates through the displayed range; the speed slider sets
    decades of log-age per second; intermediate SED frames are interpolated in
    log-flux for smoothness and labelled as display-only. Every visible plot
    (SED, star counts, ionizing photons, SN rates, surviving mass, yields)

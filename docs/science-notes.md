@@ -10,7 +10,9 @@ is authoritative.
   instantaneous burst, with \(L_\odot = 3.848\times10^{26}\,\mathrm{W}\)
   (manual convention). Wavelengths in Å.
 - **Age grid**: \(\log_{10}(\mathrm{age/yr}) = 6.0 \ldots 11.0\) in 0.1 dex
-  steps (51 bins). Where a bin width matters (SN rates), bin \(n\) spans
+  steps (51 bins). The explorer’s playback and property plots stop at 10.13,
+  about the age of the Universe. Fetch data and the API still return every
+  bin out to 11.0. Where a bin width matters (SN rates), bin \(n\) spans
   \(10^{(\log a - 0.05)}\)–\(10^{(\log a + 0.05)}\) yr.
 - **Metallicity**: initial metal mass fraction Z; BPASS adopts
   \(Z_\odot = 0.020\). Labels: `zem5` … `z040`.

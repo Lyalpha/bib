@@ -186,20 +186,6 @@ def test_colours_cross_validate_photometry(api_client, demo_population):
         assert stored == pytest.approx(expected, abs=0.02)
 
 
-def test_hrd_playback_grids(api_client, demo_population):
-    import base64
-
-    response = api_client.get(
-        f"/api/v1/populations/{demo_population['id']}/hrd", params={"diagram": "TL"}
-    )
-    assert response.status_code == 200
-    payload = response.json()
-    assert len(payload["frames"]) == 51
-    grid = base64.b64decode(payload["frames"][25]["grid"])
-    assert len(grid) == payload["nx"] * payload["ny"]
-    assert payload["scale"]["hi"] >= payload["scale"]["lo"]
-
-
 def test_filters_bundled(api_client):
     filters = api_client.get("/api/v1/filters").json()
     names = {f["name"] for f in filters}

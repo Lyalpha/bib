@@ -89,6 +89,16 @@ Re-runs are idempotent; use `--replace` to force re-ingestion. See
 Science notes (units, magnitude systems, dust laws, event heuristics) live
 in `docs/science-notes.md`.
 
+## Examples
+
+`notebooks/jwst_cluster_mass.ipynb` fetches one old binary population from a
+running bib instance, plots the SED, and estimates a minimum cluster mass in
+a JWST filter at low redshift.
+
+`notebooks/science_checks.ipynb` repeats mass scaling, foreground-screen dust
+extinction, the redshift transform, and AB photometry with the same equations
+and libraries the server uses.
+
 ## Development
 
 ```sh

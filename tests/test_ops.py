@@ -192,7 +192,6 @@ def test_is_limited_covers_expensive_set():
     assert is_limited(req("GET", "/api/v1/populations/1/sed", "resolution=native"), settings)
     assert is_limited(req("GET", "/api/v1/populations/1/sed", "format=csv"), settings)
     assert not is_limited(req("GET", "/api/v1/populations/1/sed"), settings)
-    assert is_limited(req("GET", "/api/v1/populations/1/hrd"), settings)
     assert is_limited(req("POST", "/_ops/login"), settings)
     assert not is_limited(req("GET", "/api/v1/health"), settings)
 

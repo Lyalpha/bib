@@ -4,7 +4,7 @@ Everything the interface displays is served from `/api/v1`. Interactive
 OpenAPI documentation lives at `/api/docs` (ReDoc at `/api/redoc`). `/api` and
 `/api/v1` redirect there. Set `BIB_EXPOSE_DOCS=false` to hide the UI (the JSON
 API stays up). The API is deliberately parameter-rich. The in-browser
-[request-data page](/request) (`GET /api/v1/export`) is the query builder:
+[Fetch data page](/request) (`GET /api/v1/export`) is the query builder:
 IMF, metallicity and age in, a file with units and a query header out.
 
 `population_id` is the integer `id` of a loaded simple stellar population
@@ -13,8 +13,8 @@ IMF, metallicity and age in, a file with units and a query header out.
 0.1 dex grid from 6.0 (1 Myr) to 11.0 (100 Gyr). SED fetches default to the
 **native** 1 Å science grid.
 
-The in-browser explorer uses a private playback endpoint that is not part of
-the public schema.
+The in-browser explorer uses an internal playback endpoint that is omitted
+from the public schema.
 
 ## Endpoints at a glance
 
@@ -27,10 +27,9 @@ the public schema.
 | `GET /api/v1/populations/{id}` | detail incl. provenance and per-age bolometric luminosities |
 | `GET /api/v1/populations/{id}/sed` | one native-resolution SED; `log_age`, `mass`, `dust_law`, `ebv`, `rv`, `format=json\|csv` |
 | `GET /api/v1/populations/{id}/timeseries` | per-age tables: `colours`, `ionizing`, `starmass`, `sn_rates`, `yields`, `mlratio`, `star_counts` |
-| `GET /api/v1/populations/{id}/hrd` | HRD occupation grids (uint8-quantized, base64) for animation |
 | `GET /api/v1/filters` | bundled filter metadata |
 | `GET /api/v1/filters/{name}/curve` | transmission curve |
-| `GET /api/v1/export/options` | products, unit systems and file formats for the request-data page |
+| `GET /api/v1/export/options` | products, unit systems and file formats for the Fetch data page |
 | `GET /api/v1/export` | download by IMF / Z / age (`product`, `units`, `format=csv\|json\|ecsv\|ascii`) |
 | `GET /api/v1/photometry` | absolute AB magnitudes through bundled filters (`population_id`, `log_age`) |
 | `POST /api/v1/photometry/custom` | upload a transmission curve, get its AB magnitude |

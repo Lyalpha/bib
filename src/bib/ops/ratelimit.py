@@ -33,8 +33,6 @@ def is_limited(request: Request, settings: Settings) -> bool:
         return True
     if path.endswith("/sed_frames"):
         return True
-    if path.endswith("/hrd"):
-        return True
     if _SED.match(path):
         query = request.query_params
         return query.get("resolution") == "native" or query.get("format") == "csv"

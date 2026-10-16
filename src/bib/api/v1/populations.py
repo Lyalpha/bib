@@ -1,4 +1,4 @@
-"""Population endpoints: listing, SEDs, per-age products, HRD grids."""
+"""Population endpoints: listing, SEDs, and per-age products."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from bib.api.v1.helpers import (
-    encode_u8_log,
     get_population_or_404,
     population_summary,
     resolve_age_index,
@@ -279,66 +278,4 @@ def get_timeseries(
         "columns": {
             f: [getattr(r, f) for r in rows] for f in fields
         },
-    }
-
-
-@router.get("/populations/{population_id}/hrd", summary="HRD occupation grids (all ages)")
-def get_hrd(
-    population_id: int,
-    diagram: str = Query("TL", pattern="^(TL|TG|TTG)$"),
-    split_classes: bool = Query(False, description="Return the three surface-H classes separately"),
-    db: Session = Depends(get_db),
-) -> dict:
-    """Log-quantized uint8 grids (base64), one frame per age — built for playback.
-
-    Grid values are stellar occupation densities; decode with
-    ``value = 10^(lo + q/255 * (hi - lo))`` for q > 0, empty cells are q = 0.
-    """
-    get_population_or_404(db, population_id)
-    rows = db.scalars(
-        select(m.HrdGrid)
-        .where(m.HrdGrid.population_id == population_id, m.HrdGrid.diagram == diagram)
-        .order_by(m.HrdGrid.age_index, m.HrdGrid.h_class)
-    ).all()
-    if not rows:
-        raise HTTPException(404, f"no {diagram} HRD grids for population {population_id}")
-
-    by_age: dict[int, dict] = {}
-    grids_by_age: dict[int, list[np.ndarray]] = {}
-    for row in rows:
-        grid = sedlib.decode_f32(row.grid, 100 * 100).reshape(100, 100)
-        by_age.setdefault(row.age_index, {"log_age": row.log_age})
-        grids_by_age.setdefault(row.age_index, []).append(grid)
-
-    global_max = max(float(np.max(np.sum(g, axis=0))) for g in
-                     (np.stack(v) for v in grids_by_age.values()))
-    floor_ratio = 1e-4
-
-    frames = []
-    for age_index in sorted(grids_by_age):
-        stack = grids_by_age[age_index]
-        if split_classes:
-            payload = {"classes": [encode_u8_log(g, global_max, floor_ratio) for g in stack]}
-        else:
-            payload = {"grid": encode_u8_log(np.sum(stack, axis=0), global_max, floor_ratio)}
-        frames.append({"age_index": age_index, "log_age": by_age[age_index]["log_age"], **payload})
-
-    return {
-        "population_id": population_id,
-        "diagram": diagram,
-        "nx": 100,
-        "ny": 100,
-        "axes": {
-            "log_t": {"min": 0.1, "max": 10.0, "step": 0.1, "note": "rows"},
-            "col": {"min": -2.9, "max": 7.0, "step": 0.1, "note": "columns; logL, logg or log(T^4/g)"},
-        },
-        "scale": {
-            "mode": "log-uint8",
-            "global_max": global_max,
-            "floor_ratio": floor_ratio,
-            "lo": float(np.log10(global_max * floor_ratio)) if global_max > 0 else 0.0,
-            "hi": float(np.log10(global_max)) if global_max > 0 else 0.0,
-        },
-        "split_classes": split_classes,
-        "frames": frames,
     }
