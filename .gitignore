@@ -30,3 +30,4 @@ site/
 .vscode/
 *.swp
 .agent/
+.ipynb_checkpoints/
