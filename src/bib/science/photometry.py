@@ -1,14 +1,15 @@
 """Synthetic photometry: absolute AB magnitudes from BPASS SEDs.
 
-Definition (photon-counting detector, the common case):
+Every magnitude is photon-weighted, the convention used by synphot and by
+CCD and infrared surveys:
 
     m_AB = -2.5 log10( ∫ f_λ(λ) T(λ) λ dλ  /  ∫ f_ν=3631 Jy · (c/λ²) T(λ) λ dλ )
 
 with f_λ evaluated at 10 pc from the SED's luminosity density (absolute
 magnitude convention), i.e. magnitudes describe a 10^6 M_sun population at
-10 pc unless rescaled. For energy-counting detectors the extra λ weight is
-dropped. Filter transmissions are interpolated onto the SED grid, which is
-always the full-resolution grid.
+10 pc unless rescaled. The SVO detector tag (photon or energy) is kept on
+the filter record and is not used in the integral. Filter transmissions are
+interpolated onto the SED grid, which is always the full-resolution grid.
 """
 
 from __future__ import annotations
@@ -115,13 +116,10 @@ def ab_magnitude(
 
     f_lambda = flux if flux_unit == "flam_cgs" else flux_at_10pc(flux)  # erg/s/cm^2/Å
     ab_f_lambda = AB_ZERO_FNU * C_A_S / wl**2  # 3631 Jy expressed as f_λ
-
-    if filt.detector_type == "photon":
-        numerator = np.trapezoid(f_lambda * tr * wl, wl)
-        denominator = np.trapezoid(ab_f_lambda * tr * wl, wl)
-    else:
-        numerator = np.trapezoid(f_lambda * tr, wl)
-        denominator = np.trapezoid(ab_f_lambda * tr, wl)
+    # Photon weight (extra factor of λ) for every filter, including those the
+    # SVO tags as energy detectors.
+    numerator = np.trapezoid(f_lambda * tr * wl, wl)
+    denominator = np.trapezoid(ab_f_lambda * tr * wl, wl)
 
     if numerator <= 0 or denominator <= 0:
         return PhotometryResult(filt.name, None, filt.lambda_eff, coverage)

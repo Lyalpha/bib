@@ -1,7 +1,8 @@
 """Analytic checks of the AB photometry engine.
 
 The key invariant: a source whose f_nu is exactly 3631 Jy at 10 pc has
-m_AB = 0 in *every* filter, for both photon- and energy-counting detectors.
+m_AB = 0 in every filter. The integral is always photon-weighted; an SVO
+energy-detector tag does not change it.
 """
 
 from __future__ import annotations
@@ -41,6 +42,15 @@ def test_ab_flat_source_is_zero_mag(detector):
     result = ab_magnitude(wl, sed, box_filter(4000.0, 6000.0, detector=detector))
     assert result.ab_mag == pytest.approx(0.0, abs=1e-9)
     assert result.coverage == pytest.approx(1.0)
+
+
+def test_detector_tag_does_not_change_the_magnitude():
+    """A sloping spectrum would differ by ~0.01 mag if the energy weight were used."""
+    wl = np.linspace(3000.0, 9000.0, 3000)
+    sed = ab_flat_sed(wl) * (wl / 5000.0) ** 2
+    photon = ab_magnitude(wl, sed, box_filter(4500.0, 6500.0, detector="photon")).ab_mag
+    energy = ab_magnitude(wl, sed, box_filter(4500.0, 6500.0, detector="energy")).ab_mag
+    assert photon == pytest.approx(energy, abs=1e-12)
 
 
 def test_flux_scaling_shifts_magnitude():

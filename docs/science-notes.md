@@ -23,9 +23,10 @@ is authoritative.
   \frac{\int f_\lambda(\lambda)\,T(\lambda)\,\lambda\,d\lambda}
        {\int f_\lambda^{3631\,\mathrm{Jy}}(\lambda)\,T(\lambda)\,\lambda\,d\lambda}
   \]
-  for photon-counting detectors; the \(\lambda\) weight is dropped for
-  energy-counting detectors (per filter metadata from the SVO Filter Profile
-  Service). BPASS's own `colours` tables are Vega magnitudes for the classic
+  The extra factor of \(\lambda\) is the photon weight. It is applied to every
+  filter, including Johnson–Cousins curves that the SVO tags as energy
+  detectors. That is the convention in synphot and in CCD and infrared
+  survey photometry. BPASS's own `colours` tables are Vega magnitudes for the classic
   bands — bib serves those tables verbatim and does not convert between
   systems.
 - **Redshift**: observer-frame wavelengths are \(\lambda_\mathrm{obs}=\lambda_\mathrm{rest}(1+z)\).
