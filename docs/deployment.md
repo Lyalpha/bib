@@ -105,5 +105,18 @@ uv run mkdocs serve      # this documentation
 
 Tests resolve their database from `BIB_TEST_DATABASE_URL`, then
 `DATABASE_URL`, then a local default (`…@localhost:5433/bib_test`); API tests
-are skipped automatically when no PostgreSQL server is reachable. GitHub
-Actions runs lint + tests against a service container and builds the image.
+are skipped automatically when no PostgreSQL server is reachable.
+
+The workflows under `.github/workflows/` describe the intended CI/CD shape
+(they run once the repository is mirrored to GitHub or an equivalent runner
+is attached):
+
+| workflow | trigger | what it does |
+|---|---|---|
+| `ci.yml` | push to `main`, pull requests | `uv lock --check`, ruff lint + format, `cffconvert --validate`, pytest against a PostgreSQL service (Python 3.13), `mkdocs build --strict`, container build + health probe |
+| `science-regression.yml` | weekly, `v*` tags, manual | fetches the BPASS subset, runs `pytest -m realdata`, publishes the pass/fail table in the job summary |
+| `release.yml` | `v*` tags | checks tag = `pyproject` = package = `CITATION.cff` = `.zenodo.json` and that no placeholders remain, pushes the image to GHCR, creates the GitHub release from the matching `CHANGELOG.md` section |
+| `security.yml` | push, PR, weekly | `pip-audit` on the exported lock, `gitleaks` over history |
+
+Dependabot (`.github/dependabot.yml`) opens monthly grouped updates for the
+`uv` lock, GitHub Actions and the base image.

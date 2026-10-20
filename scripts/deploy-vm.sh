@@ -449,6 +449,31 @@ install_htaccess() {
   log "wrote $dest (RewriteRule [P] -> 127.0.0.1:${PORT})"
 }
 
+post_deploy_smoke() {
+  # Loopback checks against gunicorn (do not need Apache): liveness,
+  # readiness (DB reachable + migrated), one real science call, and the
+  # security headers the app is supposed to set.
+  local base="http://127.0.0.1:${PORT}" body pid
+  log "post-deploy smoke on $base"
+  for _ in $(seq 1 20); do
+    curl -fsS "$base/api/v1/health" >/dev/null 2>&1 && break
+    sleep 1
+  done
+  curl -fsS "$base/api/v1/health" >/dev/null || { echo "smoke: /api/v1/health failed" >&2; return 1; }
+  curl -fsS "$base/api/v1/ready" >/dev/null || { echo "smoke: /api/v1/ready failed (database?)" >&2; return 1; }
+  pid="$(curl -fsS "$base/api/v1/populations" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r[0]["id"] if r else "")')"
+  if [[ -n "$pid" ]]; then
+    body="$(curl -fsS "$base/api/v1/photometry?population_id=${pid}&log_age=8.0&filters=sdss.g")" \
+      || { echo "smoke: /api/v1/photometry failed" >&2; return 1; }
+    grep -q '"attenuation_label"' <<<"$body" || { echo "smoke: photometry payload lacks attenuation flags" >&2; return 1; }
+  else
+    echo "smoke: no populations loaded; skipping the photometry call" >&2
+  fi
+  curl -fsSI "$base/" | grep -qi '^content-security-policy:' \
+    || { echo "smoke: Content-Security-Policy header missing" >&2; return 1; }
+  log "smoke OK"
+}
+
 print_proxy_help() {
   local public="$1"
   cat <<EOF
@@ -495,8 +520,8 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 load_env
-log "uv sync --frozen --python 3.12 --extra prod"
-uv sync --frozen --python 3.12 --extra prod
+log "uv sync --frozen --python 3.13 --extra prod"
+uv sync --frozen --python 3.13 --extra prod
 # Later `uv run` without --extra prod would drop gunicorn from the venv
 # (systemd then fails with 203/EXEC). Keep the prod extra on every invoke.
 run_bib() { uv run --frozen --extra prod bib "$@"; }
@@ -528,6 +553,10 @@ fi
 if (( ! SKIP_HTACCESS )); then
   log "Apache .htaccess in $DOCROOT"
   install_htaccess
+fi
+
+if (( ! SKIP_UNIT )); then
+  post_deploy_smoke || echo "warning: post-deploy smoke failed; check ~/.local/state/bib/error.log" >&2
 fi
 
 print_proxy_help "$PUBLIC_HOST"

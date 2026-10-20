@@ -54,11 +54,13 @@ an Apache `.htaccess` proxy. See `docs/operations.md`.
 ## Ingesting real BPASS data
 
 A public instance should already have data loaded. This section is for
-operators who want to host their own copy. bib never redistributes BPASS
-files — download the releases yourself:
+operators who want to host their own copy. A public bib instance serves
+*derived* BPASS products (SEDs, photometry, per-age tables) under the BPASS
+team's CC BY-NC 4.0 licence with attribution; it does not mirror the release
+archives. To self-host, obtain the release files yourself:
 
 - [BPASS v2.2.1](https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/)
-  — population synthesis + stellar models (primary release).
+  — population synthesis products (primary release).
 - [BPASS v2.3](https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/bpassv2p3/)
   — alpha-enhanced spectral synthesis extension.
 - [bpass.auckland.ac.nz](https://bpass.auckland.ac.nz) — project home.
@@ -107,6 +109,11 @@ uv run ruff check .
 uv run pytest
 uv run bib serve --reload
 ```
+
+Database tests skip unless PostgreSQL is reachable (see `tests/conftest.py`).
+The real-data science checks (`pytest -m realdata`) additionally need the
+small BPASS v2.2.1 subset fetched with `uv run python scripts/fetch_bpass_subset.py`;
+their measured residuals are recorded in `docs/science-notes.md`.
 
 Documentation sources live in `docs/` (`uv run mkdocs serve`).
 

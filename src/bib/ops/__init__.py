@@ -37,9 +37,7 @@ def install(app: FastAPI, settings: Settings) -> None:
             response.headers["Retry-After"] = "60"
             apply_security_headers(response, request, request_id)
             _log_request(logger, request, 429, 0.0, request_id)
-            emit_request(
-                request.method, request.url.path, 429, 0.0, settings.normalized_admin_path
-            )
+            emit_request(request.method, request.url.path, 429, 0.0, settings.normalized_admin_path)
             return response
 
         t0 = time.perf_counter()
@@ -57,9 +55,7 @@ def install(app: FastAPI, settings: Settings) -> None:
                     "duration_ms": round(dt * 1000, 2),
                 },
             )
-            emit_request(
-                request.method, request.url.path, 500, dt, settings.normalized_admin_path
-            )
+            emit_request(request.method, request.url.path, 500, dt, settings.normalized_admin_path)
             raise
         dt = time.perf_counter() - t0
         apply_security_headers(response, request, request_id)

@@ -1,11 +1,12 @@
 [project]
 name = "bib"
-version = "0.1.0a1"
+version = "0.1.0"
 description = "BPASS-in-Browser (bib): a pedagogical web explorer for BPASS stellar population synthesis results"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [{ name = "bib contributors" }]
+# TODO: fill the author before tagging; keep in sync with CITATION.cff and .zenodo.json.
+authors = [{ name = "<Given names> <Family name>" }]
 keywords = ["astronomy", "BPASS", "stellar populations", "spectral synthesis"]
 dependencies = [
     "fastapi>=0.115",
@@ -40,6 +41,7 @@ dev = [
     "ruff>=0.6",
     "mkdocs-material>=9.5",
     "mkdocstrings[python]>=0.25",
+    "synphot>=1.4",
 ]
 
 [build-system]
@@ -53,6 +55,8 @@ packages = ["src/bib"]
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+# Notebooks are narrative; they are executed, not linted.
+extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
@@ -65,4 +69,7 @@ ignore = ["E501", "B008", "SIM108", "RUF001", "RUF002", "RUF003"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "realdata: validation against the fetched BPASS v2.2.1 subset (needs data/raw/bpass-subset and PostgreSQL)",
+]
 filterwarnings = ["ignore::DeprecationWarning:pkg_resources"]

@@ -24,6 +24,7 @@ class ProductSpec:
     allows_all_ages: bool = True
     uses_dust: bool = False
     uses_redshift: bool = False
+    uses_igm: bool = False  # IGM attenuation option (implies uses_redshift)
     uses_filters: bool = False
     uses_mass: bool = True
     table: str | None = None  # timeseries table key
@@ -33,9 +34,25 @@ class ProductSpec:
 
 _IONIZING = (
     FieldSpec("log_nion", "dex (s^-1)", "s^-1", "H-ionizing photon rate N_ion", "log", "log_nion"),
-    FieldSpec("log_l_halpha", "dex (erg s^-1)", "erg s^-1", "Case B Hα luminosity", "log", "log_l_halpha"),
-    FieldSpec("log_l_fuv", "dex (erg s^-1 Å^-1)", "erg s^-1 Å^-1", "FUV luminosity density (1556–1576 Å)", "log", "log_l_fuv"),
-    FieldSpec("log_l_nuv", "dex (erg s^-1 Å^-1)", "erg s^-1 Å^-1", "NUV luminosity density (2257–2277 Å)", "log", "log_l_nuv"),
+    FieldSpec(
+        "log_l_halpha", "dex (erg s^-1)", "erg s^-1", "Case B Hα luminosity", "log", "log_l_halpha"
+    ),
+    FieldSpec(
+        "log_l_fuv",
+        "dex (erg s^-1 Å^-1)",
+        "erg s^-1 Å^-1",
+        "FUV luminosity density (1556–1576 Å)",
+        "log",
+        "log_l_fuv",
+    ),
+    FieldSpec(
+        "log_l_nuv",
+        "dex (erg s^-1 Å^-1)",
+        "erg s^-1 Å^-1",
+        "NUV luminosity density (2257–2277 Å)",
+        "log",
+        "log_l_nuv",
+    ),
 )
 
 _COLOURS = (
@@ -63,31 +80,73 @@ _COLOURS = (
 )
 
 _STARMASS = (
-    FieldSpec("mass_stars", "Msun / 1e6 Msun formed", "Msun", "Mass remaining in live stars", "linear"),
-    FieldSpec("mass_remnants", "Msun / 1e6 Msun formed", "Msun", "Mass in remnants (WD/NS/BH); binary files only", "linear"),
+    FieldSpec(
+        "mass_stars", "Msun / 1e6 Msun formed", "Msun", "Mass remaining in live stars", "linear"
+    ),
+    FieldSpec(
+        "mass_remnants",
+        "Msun / 1e6 Msun formed",
+        "Msun",
+        "Mass in remnants (WD/NS/BH); binary files only",
+        "linear",
+    ),
 )
 
 _SN = (
     FieldSpec("n_ia", "count / 1e6 Msun / bin", "yr^-1", "Type Ia supernovae", "linear"),
     FieldSpec("n_iip", "count / 1e6 Msun / bin", "yr^-1", "Type IIP supernovae", "linear"),
-    FieldSpec("n_ii_other", "count / 1e6 Msun / bin", "yr^-1", "Other Type II supernovae", "linear"),
+    FieldSpec(
+        "n_ii_other", "count / 1e6 Msun / bin", "yr^-1", "Other Type II supernovae", "linear"
+    ),
     FieldSpec("n_ib", "count / 1e6 Msun / bin", "yr^-1", "Type Ib supernovae", "linear"),
     FieldSpec("n_ic", "count / 1e6 Msun / bin", "yr^-1", "Type Ic supernovae", "linear"),
     FieldSpec("n_grb", "count / 1e6 Msun / bin", "yr^-1", "Long GRB (QHE pathway)", "linear"),
     FieldSpec("n_pisn", "count / 1e6 Msun / bin", "yr^-1", "Pair-instability supernovae", "linear"),
     FieldSpec("n_low_mass", "count / 1e6 Msun / bin", "yr^-1", "Low-mass transients", "linear"),
-    FieldSpec("bin_width_yr", "yr", "yr", "Age-bin width (for converting counts to rates)", "intensive"),
+    FieldSpec(
+        "bin_width_yr", "yr", "yr", "Age-bin width (for converting counts to rates)", "intensive"
+    ),
 )
 
 _YIELDS = (
-    FieldSpec("wind_h", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Hydrogen in stellar winds", "linear"),
-    FieldSpec("wind_he", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Helium in stellar winds", "linear"),
-    FieldSpec("wind_z", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Metals in stellar winds", "linear"),
-    FieldSpec("wind_energy", "Msun m^2 s^-2 yr^-1 / 1e6 Msun formed", "Msun m^2 s^-2 yr^-1", "Wind mechanical energy (BPASS units)", "linear"),
+    FieldSpec(
+        "wind_h",
+        "Msun yr^-1 / 1e6 Msun formed",
+        "Msun yr^-1",
+        "Hydrogen in stellar winds",
+        "linear",
+    ),
+    FieldSpec(
+        "wind_he", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Helium in stellar winds", "linear"
+    ),
+    FieldSpec(
+        "wind_z", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Metals in stellar winds", "linear"
+    ),
+    FieldSpec(
+        "wind_energy",
+        "Msun m^2 s^-2 yr^-1 / 1e6 Msun formed",
+        "Msun m^2 s^-2 yr^-1",
+        "Wind mechanical energy (BPASS units)",
+        "linear",
+    ),
     FieldSpec("sn_energy", "J yr^-1 / 1e6 Msun formed", "J yr^-1", "Supernova energy", "linear"),
-    FieldSpec("sn_h", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Hydrogen in supernova ejecta", "linear"),
-    FieldSpec("sn_he", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Helium in supernova ejecta", "linear"),
-    FieldSpec("sn_z", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Metals in supernova ejecta", "linear"),
+    FieldSpec(
+        "sn_h",
+        "Msun yr^-1 / 1e6 Msun formed",
+        "Msun yr^-1",
+        "Hydrogen in supernova ejecta",
+        "linear",
+    ),
+    FieldSpec(
+        "sn_he",
+        "Msun yr^-1 / 1e6 Msun formed",
+        "Msun yr^-1",
+        "Helium in supernova ejecta",
+        "linear",
+    ),
+    FieldSpec(
+        "sn_z", "Msun yr^-1 / 1e6 Msun formed", "Msun yr^-1", "Metals in supernova ejecta", "linear"
+    ),
 )
 
 _ML = (
@@ -124,10 +183,26 @@ def _count_field(name: str) -> FieldSpec:
 _COUNTS = tuple(
     _count_field(name)
     for name in (
-        "n_o_hi", "n_of_hi", "n_b_hi", "n_a_hi", "n_ysg_hi",
-        "n_k_hi", "n_m_hi", "n_wnh_hi", "n_wn_hi", "n_wc_hi",
-        "n_o_lo", "n_of_lo", "n_b_lo", "n_a_lo", "n_ysg_lo",
-        "n_k_lo", "n_m_lo", "n_wnh_lo", "n_wn_lo", "n_wc_lo",
+        "n_o_hi",
+        "n_of_hi",
+        "n_b_hi",
+        "n_a_hi",
+        "n_ysg_hi",
+        "n_k_hi",
+        "n_m_hi",
+        "n_wnh_hi",
+        "n_wn_hi",
+        "n_wc_hi",
+        "n_o_lo",
+        "n_of_lo",
+        "n_b_lo",
+        "n_a_lo",
+        "n_ysg_lo",
+        "n_k_lo",
+        "n_m_lo",
+        "n_wnh_lo",
+        "n_wn_lo",
+        "n_wc_lo",
     )
 )
 
@@ -140,6 +215,7 @@ PRODUCTS: dict[str, ProductSpec] = {
         allows_all_z=False,
         uses_dust=True,
         uses_redshift=True,
+        uses_igm=True,
     ),
     "photometry": ProductSpec(
         key="photometry",
@@ -148,6 +224,7 @@ PRODUCTS: dict[str, ProductSpec] = {
         allows_all_z=False,
         uses_dust=True,
         uses_redshift=True,
+        uses_igm=True,
         uses_filters=True,
     ),
     "ionizing": ProductSpec(
@@ -216,6 +293,7 @@ PRODUCTS: dict[str, ProductSpec] = {
     ),
 }
 
+
 def physical_field_name(field: FieldSpec, product_key: str) -> str:
     if field.kind == "log" and field.name.startswith("log_"):
         return field.name[4:]
@@ -238,10 +316,34 @@ EXPORT_UNITS = (
 )
 
 EXPORT_FORMATS = (
-    {"key": "csv", "label": "CSV", "media": "text/csv", "ext": "csv", "note": "Comma-separated values"},
-    {"key": "json", "label": "JSON", "media": "application/json", "ext": "json", "note": "One JSON object"},
-    {"key": "ecsv", "label": "ECSV", "media": "text/plain", "ext": "ecsv", "note": "Enhanced CSV, for Astropy"},
-    {"key": "ascii", "label": "ASCII", "media": "text/plain", "ext": "dat", "note": "Space-separated columns"},
+    {
+        "key": "csv",
+        "label": "CSV",
+        "media": "text/csv",
+        "ext": "csv",
+        "note": "Comma-separated values",
+    },
+    {
+        "key": "json",
+        "label": "JSON",
+        "media": "application/json",
+        "ext": "json",
+        "note": "One JSON object",
+    },
+    {
+        "key": "ecsv",
+        "label": "ECSV",
+        "media": "text/plain",
+        "ext": "ecsv",
+        "note": "Enhanced CSV, for Astropy",
+    },
+    {
+        "key": "ascii",
+        "label": "ASCII",
+        "media": "text/plain",
+        "ext": "dat",
+        "note": "Space-separated columns",
+    },
 )
 
 
@@ -255,6 +357,7 @@ def product_options() -> list[dict]:
             "allows_all_ages": p.allows_all_ages,
             "uses_dust": p.uses_dust,
             "uses_redshift": p.uses_redshift,
+            "uses_igm": p.uses_igm,
             "uses_filters": p.uses_filters,
             "uses_mass": p.uses_mass,
             "bundle": p.bundle,

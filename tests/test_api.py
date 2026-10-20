@@ -136,7 +136,11 @@ def test_sed_csv_download(api_client, demo_population):
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     lines = response.text.strip().splitlines()
-    assert lines[2] == "wavelength_angstrom,flux_lsun_per_angstrom"
+    comments = [ln for ln in lines if ln.startswith("#")]
+    assert any(ln.startswith("# igm: none") for ln in comments)
+    assert any("pipeline: mass -> dust (rest frame) -> redshift -> igm" in ln for ln in comments)
+    header = next(ln for ln in lines if not ln.startswith("#"))
+    assert header == "wavelength_angstrom,flux_lsun_per_angstrom"
     assert len(lines) > 1000
 
 
@@ -311,9 +315,7 @@ def test_custom_filter_upload_matches_local_computation(api_client, demo_populat
         f"/api/v1/populations/{pid}/sed",
         params={"age_index": 20, "resolution": "native"},
     ).json()
-    curve = FilterCurve(
-        name="local", display_name="local", wavelength=wl, transmission=tr
-    )
+    curve = FilterCurve(name="local", display_name="local", wavelength=wl, transmission=tr)
     local = ab_magnitude(np.asarray(sed["wavelength"]), np.asarray(sed["flux"]), curve)
     assert uploaded_mag == pytest.approx(local.ab_mag, abs=0.01)
 
@@ -325,3 +327,187 @@ def test_custom_filter_upload_rejects_garbage(api_client, demo_population):
         files={"file": ("bad.txt", io.BytesIO(b"not a filter"), "text/plain")},
     )
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# attenuation pipeline: dust validity window, IGM, per-filter status flags
+# ---------------------------------------------------------------------------
+
+
+def test_meta_lists_igm_models_and_dust_windows(meta):
+    assert {m["key"] for m in meta["igm_models"]} == {"inoue14", "madau95"}
+    assert meta["igm_default"] == "inoue14"
+    ccm = next(law for law in meta["dust_laws"] if law["key"] == "ccm89")
+    assert ccm["rv_range"] == [2.0, 6.0]
+    assert ccm["extrapolated"] is False
+    assert ccm["valid_range_a"][0] == pytest.approx(1000.0)
+
+
+def test_sed_dust_is_not_extrapolated_outside_window(api_client, demo_population):
+    pid = demo_population["id"]
+    clean = api_client.get(f"/api/v1/populations/{pid}/sed", params={"age_index": 5}).json()
+    dusty = api_client.get(
+        f"/api/v1/populations/{pid}/sed",
+        params={"age_index": 5, "dust_law": "calzetti00", "ebv": 0.3},
+    ).json()
+    wl = np.asarray(clean["wavelength"])
+    lo, hi = dusty["dust"]["applied_range_a"]
+    outside = (wl < lo * 0.95) | (wl > hi * 1.05)
+    inside = (wl > lo * 1.05) & (wl < hi * 0.95)
+    f_clean, f_dusty = np.asarray(clean["flux"]), np.asarray(dusty["flux"])
+    np.testing.assert_array_equal(f_dusty[outside], f_clean[outside])
+    positive = inside & (f_clean > 0)
+    assert np.all(f_dusty[positive] < f_clean[positive])
+    assert dusty["dust"]["extrapolated"] is False
+    assert dusty["dust"]["frame"] == "rest"
+    assert dusty["pipeline"][0] == "mass"
+
+
+def test_rv_outside_supported_range_is_422(api_client, demo_population):
+    pid = demo_population["id"]
+    for rv in (1.5, 6.5):
+        response = api_client.get(
+            f"/api/v1/populations/{pid}/sed",
+            params={"age_index": 5, "dust_law": "ccm89", "ebv": 0.1, "rv": rv},
+        )
+        assert response.status_code == 422, rv
+        response = api_client.get(
+            "/api/v1/photometry",
+            params={"population_id": pid, "age_index": 5, "dust_law": "f99", "ebv": 0.1, "rv": rv},
+        )
+        assert response.status_code == 422, rv
+
+
+def test_photometry_dust_status_follows_validity_window(api_client, demo_population):
+    pid = demo_population["id"]
+    rows = api_client.get(
+        "/api/v1/photometry",
+        params={
+            "population_id": pid,
+            "age_index": 5,
+            "filters": "sdss.g,jwst.f356w,jwst.f444w",
+            "dust_law": "ccm89",
+            "ebv": 0.2,
+        },
+    ).json()["photometry"]
+    status = {r["filter"]: r for r in rows}
+    assert status["sdss.g"]["dust_status"] == "applied"
+    assert status["sdss.g"]["attenuation_label"] == "dust-extinguished"
+    assert status["jwst.f356w"]["dust_status"] == "partial"  # straddles 3.33 µm edge
+    assert status["jwst.f444w"]["dust_status"] == "not_applied"
+    assert status["jwst.f444w"]["attenuation_label"] == "unattenuated"
+    assert all(r["igm_status"] == "none" for r in rows)  # z = 0
+
+    clean = api_client.get(
+        "/api/v1/photometry",
+        params={"population_id": pid, "age_index": 5, "filters": "jwst.f444w"},
+    ).json()["photometry"][0]
+    assert clean["dust_status"] == "none"
+    assert clean["ab_mag"] == status["jwst.f444w"]["ab_mag"]  # untouched, not extrapolated
+
+
+def test_photometry_igm_status_and_attenuation(api_client, demo_population):
+    pid = demo_population["id"]
+    base = {
+        "population_id": pid,
+        "age_index": 5,
+        "filters": "jwst.f070w,jwst.f444w",
+        "redshift": 10.0,
+    }
+    without = api_client.get("/api/v1/photometry", params=base).json()
+    assert without["igm"] is None
+    rows = {r["filter"]: r for r in without["photometry"]}
+    assert rows["jwst.f070w"]["igm_status"] == "not_applied"  # blueward of Lyα(1+z) = 13372 Å
+    assert rows["jwst.f070w"]["attenuation_label"] == "unattenuated"
+    assert rows["jwst.f444w"]["igm_status"] == "none"  # redward of Lyα(1+z)
+
+    with_igm = api_client.get("/api/v1/photometry", params={**base, "igm": "inoue14"}).json()
+    assert with_igm["igm"]["model"] == "inoue14"
+    assert with_igm["igm"]["lyman_alpha_obs_a"] == pytest.approx(1215.67 * 11.0)
+    rows_igm = {r["filter"]: r for r in with_igm["photometry"]}
+    assert rows_igm["jwst.f070w"]["igm_status"] == "applied"
+    assert rows_igm["jwst.f070w"]["attenuation_label"] == "IGM-attenuated"
+    # F070W at z=10 is entirely below Lyα(1+z): essentially no flux gets through
+    assert rows_igm["jwst.f070w"]["ab_mag"] is None or (
+        rows_igm["jwst.f070w"]["ab_mag"] > rows["jwst.f070w"]["ab_mag"] + 1.0
+    )
+    assert rows_igm["jwst.f444w"]["ab_mag"] == rows["jwst.f444w"]["ab_mag"]
+
+    # F070W at z=10 is rest-frame 545–727 Å: below every dust law's window, so
+    # dust is (correctly) not applied there even though it was requested.
+    dusty = api_client.get(
+        "/api/v1/photometry",
+        params={**base, "igm": "madau95", "dust_law": "smc", "ebv": 0.1},
+    ).json()["photometry"]
+    f070 = next(r for r in dusty if r["filter"] == "jwst.f070w")
+    assert f070["dust_status"] == "not_applied"
+    assert f070["igm_status"] == "applied"
+    assert f070["attenuation_label"] == "IGM-attenuated"
+
+    # sdss.g at z=2.5 straddles Lyα(1+z) = 4255 Å and sits inside the CCM89 window
+    both = api_client.get(
+        "/api/v1/photometry",
+        params={
+            "population_id": pid,
+            "age_index": 5,
+            "filters": "sdss.g",
+            "redshift": 2.5,
+            "igm": "inoue14",
+            "dust_law": "ccm89",
+            "ebv": 0.1,
+        },
+    ).json()["photometry"][0]
+    assert both["dust_status"] == "applied"
+    assert both["igm_status"] == "applied"
+    assert both["attenuation_label"] == "dust-extinguished, IGM-attenuated"
+
+
+def test_sed_igm_only_touches_blueward_of_lyman_alpha(api_client, demo_population):
+    pid = demo_population["id"]
+    params = {"age_index": 5, "redshift": 3.0}
+    plain = api_client.get(f"/api/v1/populations/{pid}/sed", params=params).json()
+    igm = api_client.get(
+        f"/api/v1/populations/{pid}/sed", params={**params, "igm": "inoue14"}
+    ).json()
+    wl = np.asarray(plain["wavelength"])
+    lya = igm["igm"]["lyman_alpha_obs_a"]
+    f_plain, f_igm = np.asarray(plain["flux"]), np.asarray(igm["flux"])
+    red = wl > lya * 1.001
+    np.testing.assert_array_equal(f_igm[red], f_plain[red])
+    # (τ_eff → 0 again at very short wavelengths, so test the forest + LyC region)
+    blue = (wl > lya * 0.5) & (wl < lya * 0.98) & (f_plain > 0)
+    assert blue.any()
+    assert np.all(f_igm[blue] < f_plain[blue])
+    assert igm["pipeline"][-1].startswith("igm")
+    # IGM is ignored at z = 0 (payload says so)
+    rest = api_client.get(
+        f"/api/v1/populations/{pid}/sed", params={"age_index": 5, "igm": "inoue14"}
+    ).json()
+    assert rest["igm"] is None
+
+
+def test_igm_transmission_endpoint_matches_display_grid(api_client, demo_population):
+    pid = demo_population["id"]
+    frames = api_client.get(f"/api/v1/populations/{pid}/sed_frames").json()
+    trans = api_client.get(
+        "/api/v1/igm_transmission", params={"population_id": pid, "redshift": 4.0}
+    ).json()
+    assert len(trans["transmission"]) == len(frames["wavelength"])
+    assert trans["igm"]["model"] == "inoue14"
+    t = np.asarray(trans["transmission"])
+    wl_obs = np.asarray(frames["wavelength"]) * 5.0
+    assert np.all(t[wl_obs > trans["igm"]["lyman_alpha_obs_a"]] == 1.0)
+    lya = trans["igm"]["lyman_alpha_obs_a"]
+    assert np.all(t[(wl_obs > 0.5 * lya) & (wl_obs < 0.9 * lya)] < 1.0)
+    assert (
+        api_client.get(
+            "/api/v1/igm_transmission", params={"population_id": pid, "redshift": 0.0}
+        ).status_code
+        == 422
+    )
+    assert (
+        api_client.get(
+            "/api/v1/igm_transmission", params={"population_id": pid, "redshift": 2.0, "model": "x"}
+        ).status_code
+        == 422
+    )

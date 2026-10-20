@@ -152,6 +152,13 @@ def test_sentry_dsn_alias_from_env(monkeypatch):
 
 def test_sentry_optional_without_sdk(monkeypatch):
     monkeypatch.setenv("BIB_SENTRY_DSN", "https://examplePublic@example.com/1")
+    # Do not start a real SDK client (it would try to flush events at exit).
+    try:
+        import sentry_sdk
+    except ImportError:
+        sentry_sdk = None
+    if sentry_sdk is not None:
+        monkeypatch.setattr(sentry_sdk, "init", lambda **_kw: None)
     get_settings.cache_clear()
     get_branding.cache_clear()
     from bib.app import create_app
@@ -162,7 +169,7 @@ def test_sentry_optional_without_sdk(monkeypatch):
 
 
 def test_sanitize_upload_name_strips_markup():
-    assert "<" not in sanitize_upload_name('<img src=x onerror=alert(1)>.txt')
+    assert "<" not in sanitize_upload_name("<img src=x onerror=alert(1)>.txt")
     assert sanitize_upload_name("/tmp/curve.dat") == "curve.dat"
     assert sanitize_upload_name(None) == "custom"
 
@@ -193,6 +200,10 @@ def test_is_limited_covers_expensive_set():
     assert is_limited(req("GET", "/api/v1/populations/1/sed", "format=csv"), settings)
     assert not is_limited(req("GET", "/api/v1/populations/1/sed"), settings)
     assert is_limited(req("POST", "/_ops/login"), settings)
+    assert is_limited(
+        req("GET", "/api/v1/export", "product=sed&z_label=z020&all_ages=true"), settings
+    )
+    assert not is_limited(req("GET", "/api/v1/export/options"), settings)
     assert not is_limited(req("GET", "/api/v1/health"), settings)
 
 

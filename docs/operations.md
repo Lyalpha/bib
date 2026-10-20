@@ -63,7 +63,7 @@ rsync (`.env` and `~/.config/bib/env` stay outside the checkout):
 ```sh
 cd ~/bib
 git pull --ff-only
-uv sync --frozen --python 3.12 --extra prod
+uv sync --frozen --python 3.13 --extra prod
 uv run --frozen --extra prod bib init-db
 systemctl --user restart bib
 ```
@@ -256,8 +256,9 @@ disallows `/api/docs` and `/api/redoc`).
 
 Auth is `Authorization: Bearer <token>` or a small login form that sets an
 HttpOnly, SameSite=Strict cookie (`bib_ops`) scoped to the admin path,
-`Secure` when the request is HTTPS. The token is not accepted in the query
-string. After login the page shows liveness/readiness, the recent-error
+`Secure` when the request is HTTPS. The cookie stores a SHA-256 digest of
+the token, not the token itself, so a leaked cookie cannot be replayed as a
+Bearer token. The token is not accepted in the query string. After login the page shows liveness/readiness, the recent-error
 ring, and 14 days of visit counts.
 
 Obscurity is extra, not a substitute for the token.
@@ -303,17 +304,41 @@ any public deployment. The compose file does not publish PostgreSQL to the
 host; **never** add a `5432:5432` (or equivalent) publish on a public
 machine.
 
-The in-memory rate limiter (default `BIB_RATE_LIMIT_PER_MINUTE=40`) is
+The in-memory rate limiter (default `BIB_RATE_LIMIT_PER_MINUTE=40`) covers
+the expensive routes (`POST /api/v1/photometry`, `GET /api/v1/export`,
+`/sed_frames`, the custom-SED upload and the operator login) and is
 **per process**. It is fine for one or two uvicorn workers; it does not
-sync across hosts.
+sync across hosts. Export tables are streamed row by row, so a large
+all-ages SED export never holds the whole file in memory.
 
 Interactive OpenAPI (`/api/docs`, `/api/redoc`) is on by default. `/api` and
 `/api/v1` redirect there. Set `BIB_EXPOSE_DOCS=false` to hide the Swagger UI.
 
+## Releases and Zenodo
+
+1. Fill the author placeholders in `CITATION.cff`, `.zenodo.json`,
+   `pyproject.toml` and `LICENSE` (the release workflow refuses to run while
+   any `<…>` remain).
+2. Bump the version in `pyproject.toml`, `src/bib/__init__.py`,
+   `CITATION.cff` and `.zenodo.json`; add a `## [x.y.z]` section to
+   `CHANGELOG.md`; run `uv lock`.
+3. Tag and push: `git tag -a vx.y.z -m "bib x.y.z" && git push --tags`.
+   `release.yml` validates the metadata, publishes the image and creates the
+   GitHub release with the changelog section as notes.
+4. **Zenodo.** Enable the repository once at
+   <https://zenodo.org/account/settings/github/>. Every GitHub release is
+   then archived automatically; Zenodo reads `.zenodo.json` for creators,
+   licence, keywords and the `related_identifiers` that cite the BPASS
+   papers, and mints a version DOI plus a concept DOI. After the first
+   release, paste the concept DOI into `CITATION.cff` (`identifiers:`) and
+   the README badge so later versions resolve to the right record.
+5. Re-run `science-regression.yml` (it also fires on the tag) and keep its
+   summary with the release notes for an RNAAS-style companion paper.
+
 ## Rate limits and uploads
 
 One in-process token bucket applies to custom-filter POST, `sed_frames`,
-native/CSV SED downloads, GET photometry, HRD, tracks, and operator login
-POST. Exceeding the limit returns **429** with `Retry-After: 60`. Custom
+native/CSV SED downloads, GET photometry, `GET /api/v1/export`, and operator
+login POST. Exceeding the limit returns **429** with `Retry-After: 60`. Custom
 filter uploads are read in chunks and aborted at **1 MiB**; keep the
 reverse-proxy body limit in the same ballpark (see Apache/Caddy above).

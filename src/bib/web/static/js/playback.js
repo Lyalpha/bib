@@ -2,9 +2,9 @@
  *
  * A PlaybackClock owns a normalised time t in [0, 1] and advances it with
  * requestAnimationFrame while playing. Pages map t onto their own domain
- * (log-age of a population, or the age span of a stellar track) and re-render
- * on every tick. One clock can drive several linked views (HRD marker, SED
- * frame, binary visualiser) so everything stays in sync.
+ * (log-age of a population) and re-render on every tick. One clock can drive
+ * several linked views (SED frame, photometry table, product panels) so
+ * everything stays in sync.
  */
 "use strict";
 

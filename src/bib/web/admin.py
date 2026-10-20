@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 from datetime import date, timedelta
 
@@ -26,12 +27,23 @@ def tokens_match(provided: str | None, expected: str) -> bool:
     return secrets.compare_digest(provided, expected)
 
 
+def cookie_value(token: str) -> str:
+    """What the session cookie stores: a SHA-256 digest, never the raw token.
+
+    A leaked cookie (logs, browser sync, Sentry breadcrumbs) therefore cannot be
+    replayed as a Bearer token or pasted into the login form.
+    """
+    return hashlib.sha256(f"bib-ops-session:{token}".encode()).hexdigest()
+
+
 def is_authorized(request: Request) -> bool:
     expected = _settings(request).admin_token
+    if not expected:
+        return False
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer ") and tokens_match(auth[7:].strip(), expected):
         return True
-    return tokens_match(request.cookies.get(ADMIN_COOKIE), expected)
+    return tokens_match(request.cookies.get(ADMIN_COOKIE), cookie_value(expected))
 
 
 def _cookie_kwargs(request: Request) -> dict:
@@ -106,7 +118,7 @@ async def login(request: Request, token: str = Form("")):
     if not tokens_match(token, settings.admin_token):
         return _page(request, mode="login", status_code=401, error="Invalid token")
     response = RedirectResponse(settings.normalized_admin_path, status_code=HTTP_303_SEE_OTHER)
-    response.set_cookie(value=settings.admin_token, **_cookie_kwargs(request))
+    response.set_cookie(value=cookie_value(settings.admin_token), **_cookie_kwargs(request))
     return response
 
 

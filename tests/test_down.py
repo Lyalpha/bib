@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bib.down import is_bib_server_cmd, listening_socket_inodes, pids_holding_sockets, with_server_parents
+from bib.down import (
+    is_bib_server_cmd,
+    listening_socket_inodes,
+    pids_holding_sockets,
+    with_server_parents,
+)
 
 
 def test_is_bib_server_cmd_matches_serve_not_down():

@@ -42,6 +42,7 @@ nav:
   - Home: index.md
   - User guide: user-guide.md
   - Science notes: science-notes.md
+  - References: references.md
   - Ingesting BPASS data: ingestion.md
   - REST API: api.md
   - Branding & deployment: deployment.md

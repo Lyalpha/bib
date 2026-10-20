@@ -45,6 +45,10 @@ const BALMER_SERIES = [
 ];
 const LYMAN_COLOR = "rgba(158, 190, 255, 0.85)";
 const BALMER_COLOR = "rgba(255, 196, 110, 0.9)";
+const DUST_OUTSIDE_FILL = "rgba(255, 180, 84, 0.10)"; // where a requested dust law is NOT applied
+const DUST_EDGE_COLOR = "rgba(255, 180, 84, 0.75)";
+const IGM_FILL = "rgba(120, 150, 255, 0.10)"; // observer-frame region attenuated by the IGM
+const IGM_EDGE_COLOR = "rgba(120, 150, 255, 0.8)";
 const TRAIL_DEX = 0.5; // log-age spacing of play-trail snapshots
 
 const state = {
@@ -77,6 +81,11 @@ const state = {
   trail: [], // [{logAge, y}] rest-frame snapshots while playing
   customFilters: [], // {name, text, autoTick}
   photRequest: 0,
+  igmOn: true, // UI default on; the API default is "none"
+  igmModel: "inoue14",
+  igm: null, // {popId, z, model, transmission[]} on the display grid for the current z
+  igmCache: new Map(), // "popId:model:z" -> transmission[]
+  igmRequest: 0,
 };
 
 /* ------------------------------------------------------------------ selects */
@@ -204,6 +213,20 @@ function dustParams() {
   return params;
 }
 
+/** IGM model key sent to the API ("none" unless z > 0 and the toggle is on). */
+function igmModelKey(z = state.redshift) {
+  return z > 0 && state.igmOn ? state.igmModel : "none";
+}
+
+function igmParams(z = state.redshift) {
+  const key = igmModelKey(z);
+  return key === "none" ? {} : { igm: key };
+}
+
+function igmLabel(key) {
+  return (state.meta?.igm_models || []).find((m) => m.key === key)?.label || key;
+}
+
 /** Descriptive bits identifying the current population + non-default params (no age). */
 function labelBits() {
   const sel = currentSelection();
@@ -214,7 +237,69 @@ function labelBits() {
   const dust = dustParams();
   if (dust.dust_law) bits.push(`${dust.dust_law} E(B−V)=${dust.ebv}`);
   if (state.redshift > 0) bits.push(`z=${state.redshift.toFixed(2)}`);
+  if (igmModelKey() !== "none") bits.push(`IGM ${igmLabel(state.igmModel)}`);
   return bits;
+}
+
+/* ----------------------------------------------------------------------- igm */
+
+/** Transmission array aligned with state.frames.wavelength for redshift z, or null. */
+function igmFactorFor(z) {
+  const cur = state.igm;
+  if (!(z > 0) || !state.igmOn || !cur) return null;
+  if (cur.popId !== state.popId || cur.model !== state.igmModel || cur.z !== z) return null;
+  return cur.transmission;
+}
+
+let igmTimer = null;
+
+/** Fetch (or reuse) the IGM transmission for the current z / model / population. */
+async function ensureIgm() {
+  const z = state.redshift;
+  if (!(z > 0) || !state.igmOn || state.popId === null) {
+    state.igm = null;
+    return;
+  }
+  if (igmFactorFor(z)) return;
+  const cacheKey = `${state.popId}:${state.igmModel}:${z}`;
+  const cached = state.igmCache.get(cacheKey);
+  if (cached) {
+    state.igm = { popId: state.popId, z, model: state.igmModel, transmission: cached };
+    return;
+  }
+  const token = ++state.igmRequest;
+  try {
+    const data = await apiGet("/igm_transmission", {
+      population_id: state.popId,
+      redshift: z,
+      model: state.igmModel,
+    });
+    if (token !== state.igmRequest) return;
+    state.igmCache.set(cacheKey, data.transmission);
+    if (state.igmCache.size > 400) {
+      state.igmCache.delete(state.igmCache.keys().next().value);
+    }
+    state.igm = { popId: state.popId, z, model: state.igmModel, transmission: data.transmission };
+  } catch (err) {
+    reportError(err);
+  }
+}
+
+function scheduleIgm() {
+  clearTimeout(igmTimer);
+  igmTimer = setTimeout(async () => {
+    await ensureIgm();
+    renderFrame(clock.t, true);
+  }, 120);
+}
+
+function updateIgmUi() {
+  const z = state.redshift;
+  const note = $("igm-note");
+  $("sel-igm").disabled = !state.igmOn;
+  if (!state.igmOn) note.textContent = "Off — photometry blueward of Lyα(1+z) is not IGM-attenuated";
+  else if (z > 0) note.textContent = `Lyα(1+z) = ${Math.round(1215.67 * (1 + z))} Å observed`;
+  else note.textContent = "Applies blueward of Lyα(1+z) once z > 0";
 }
 
 /** Live SSP label in the same style as a pin (population bits + log-age). */
@@ -254,6 +339,8 @@ async function loadFrames() {
     clearTrail();
     updateTrailUi();
     invalidatePhotometry();
+    await ensureIgm();
+    if (token !== framesToken) return;
     renderFrame(clock.t, true);
     schedulePhotometry();
   } catch (err) {
@@ -449,14 +536,17 @@ function fluxLogShift(z) {
   return Math.log10(1 + z) - Math.log10(distanceDimming(z));
 }
 
-/** Rest-frame L_λ → observer frame: λ×(1+z), L_λ × (10 pc/D_L)² / (1+z). */
-function toObserved(xArr, yArr, z) {
+/** Rest-frame L_λ → observer frame: λ×(1+z), L_λ × (10 pc/D_L)² / (1+z), × IGM transmission. */
+function toObserved(xArr, yArr, z, igm = null) {
   if (!z) return { x: xArr, y: yArr };
   const s = 1 + z;
   const scale = distanceDimming(z) / s;
+  const useIgm = igm && igm.length === yArr.length;
   return {
     x: xArr.map((v) => v * s),
-    y: yArr.map((v) => (v === null || v === undefined ? null : v * scale)),
+    y: yArr.map((v, i) =>
+      v === null || v === undefined ? null : v * scale * (useIgm ? igm[i] : 1),
+    ),
   };
 }
 
@@ -544,6 +634,81 @@ function addSeriesOverlays(layout, xExtent, lines, color) {
   }
 }
 
+/**
+ * Shade (a) the observer-frame wavelengths where the chosen dust law is undefined, so it
+ * is obvious that no extinction was applied there, and (b) the region blueward of
+ * Lyα(1+z) where the IGM prescription acts.
+ */
+function addAttenuationRegions(layout, xExtent) {
+  const z = state.redshift;
+  const stretch = 1 + z;
+  const xLo = Math.min(xExtent[0], xExtent[1]);
+  const xHi = Math.max(xExtent[0], xExtent[1]);
+  const band = (wlA, wlB, fill, edgeColor, label, edges) => {
+    let x0 = spectralX(wlA);
+    let x1 = spectralX(wlB);
+    if (x0 > x1) [x0, x1] = [x1, x0];
+    x0 = Math.max(x0, xLo);
+    x1 = Math.min(x1, xHi);
+    if (!(x1 > x0)) return;
+    layout.shapes.push({
+      type: "rect",
+      xref: "x",
+      yref: "paper",
+      x0,
+      x1,
+      y0: 0,
+      y1: 1,
+      fillcolor: fill,
+      line: { width: 0 },
+      layer: "below",
+    });
+    for (const wl of edges) {
+      const xe = spectralX(wl);
+      if (!(xe >= xLo && xe <= xHi)) continue;
+      layout.shapes.push({
+        type: "line",
+        xref: "x",
+        yref: "paper",
+        x0: xe,
+        x1: xe,
+        y0: 0,
+        y1: 1,
+        line: { color: edgeColor, width: 1, dash: "dashdot" },
+        layer: "below",
+      });
+    }
+    const mid = state.xLog ? Math.sqrt(x0 * x1) : 0.5 * (x0 + x1);
+    layout.annotations.push({
+      x: state.xLog ? Math.log10(mid) : mid,
+      y: 0.985,
+      yref: "paper",
+      yanchor: "top",
+      xanchor: "center",
+      text: label,
+      showarrow: false,
+      font: { size: 9.5, color: edgeColor },
+      bgcolor: "rgba(10,14,22,0.6)",
+    });
+  };
+
+  const dust = dustParams();
+  if (dust.dust_law && dust.ebv > 0) {
+    const lawMeta = state.meta.dust_laws.find((l) => l.key === dust.dust_law);
+    if (lawMeta?.valid_range_a) {
+      const lo = lawMeta.valid_range_a[0] * stretch;
+      const hi = lawMeta.valid_range_a[1] * stretch;
+      const label = "no extinction applied<br>(outside dust-law window)";
+      band(1e-6, lo, DUST_OUTSIDE_FILL, DUST_EDGE_COLOR, label, [lo]);
+      band(hi, 1e12, DUST_OUTSIDE_FILL, DUST_EDGE_COLOR, label, [hi]);
+    }
+  }
+  if (igmModelKey() !== "none" && igmFactorFor(z)) {
+    const lya = 1215.67 * stretch;
+    band(1e-6, lya, IGM_FILL, IGM_EDGE_COLOR, `IGM-attenuated<br>(${esc(igmLabel(state.igmModel))})`, [lya]);
+  }
+}
+
 function plotLayout(xExtent, yLogExtent) {
   const text = css("--brand-text") || "#e7ecf3";
   const grid = PLOT_GRID;
@@ -619,6 +784,7 @@ function plotLayout(xExtent, yLogExtent) {
     annotations: [],
   };
 
+  addAttenuationRegions(layout, xExtent);
   if (state.showLyman) addSeriesOverlays(layout, xExtent, LYMAN_SERIES, LYMAN_COLOR);
   if (state.showBalmer) addSeriesOverlays(layout, xExtent, BALMER_SERIES, BALMER_COLOR);
 
@@ -646,7 +812,7 @@ function copyArr(arr) {
 function pinView(pin, t) {
   if (state.syncPins && pin.frames) {
     const { y, logAge } = interpFromFrames(pin.frames, t);
-    const view = toObserved(pin.frames.wavelength, y, pin.z);
+    const view = toObserved(pin.frames.wavelength, y, pin.z, pin.igm);
     return { ...view, label: `${pin.basebits} · logA=${logAge.toFixed(2)} 🔗` };
   }
   return { x: pin.frozen.x, y: pin.frozen.y, label: pin.frozen.label };
@@ -719,7 +885,7 @@ function bindSedViewLock(host) {
 function drawSedFrame(t) {
   if (!state.frames) return;
   const { y, logAge } = interpFromFrames(state.frames, t);
-  const cur = toObserved(state.frames.wavelength, y, state.redshift);
+  const cur = toObserved(state.frames.wavelength, y, state.redshift, igmFactorFor(state.redshift));
   const liveName = liveLabel(logAge);
 
   // ---- axis extents: union of current view, pins, and marker levels
@@ -753,7 +919,12 @@ function drawSedFrame(t) {
 
   if (state.trailOn && state.trail.length && !state.pins.length) {
     for (const snap of state.trail) {
-      const view = toObserved(state.frames.wavelength, snap.y, state.redshift);
+      const view = toObserved(
+        state.frames.wavelength,
+        snap.y,
+        state.redshift,
+        igmFactorFor(state.redshift),
+      );
       const { color, width } = trailStyle(snap.logAge);
       const trailName = `logA=${snap.logAge.toFixed(1)}`;
       traces.push({
@@ -797,8 +968,10 @@ function drawSedFrame(t) {
 
   // ---- ticked filter passbands hugging the plot floor (hidden y2 axis)
   const xUnit = state.xNu ? "Hz" : "Å";
-  for (const { curve } of tickedCurves()) {
+  for (const { key, curve } of tickedCurves()) {
     const T = normalizeTransmission(curve.transmission);
+    const row = state.photFresh ? state.photRows.find((r) => r.key === key) : null;
+    const flagged = Boolean(row && rowFlags(row).length);
     traces.push({
       x: spectralXs(curve.wavelength),
       y: T,
@@ -806,10 +979,14 @@ function drawSedFrame(t) {
       name: curve.display_name,
       showlegend: false,
       mode: "lines",
-      line: { color: filterColor(curve.lambda_eff), width: 1.2 },
+      line: { color: filterColor(curve.lambda_eff), width: flagged ? 1.6 : 1.2, dash: flagged ? "dash" : "solid" },
       fill: "tozeroy",
-      fillcolor: filterColor(curve.lambda_eff, 0.16),
-      hovertemplate: `%{x:.4g} ${xUnit} · T=%{y:.2f}<extra>` + curve.display_name + "</extra>",
+      fillcolor: filterColor(curve.lambda_eff, flagged ? 0.07 : 0.16),
+      hovertemplate:
+        `%{x:.4g} ${xUnit} · T=%{y:.2f}<extra>` +
+        curve.display_name +
+        (row ? ` · ${attenuationText(row)}` : "") +
+        "</extra>",
     });
   }
 
@@ -829,13 +1006,20 @@ function drawSedFrame(t) {
       mode: "markers",
       showlegend: false,
       marker: {
-        symbol: "diamond",
-        size: 9.5,
+        // ◇ when every requested effect was applied inside the passband,
+        // crossed ◇ when dust or IGM was requested but could not be applied there.
+        symbol: marks.map((r) => (rowFlags(r).length ? "diamond-x" : "diamond")),
+        size: marks.map((r) => (rowFlags(r).length ? 11 : 9.5)),
         color: marks.map((r) => filterColor(r.lambda_eff)),
-        line: { color: "#ffffff", width: 1 },
+        line: {
+          color: marks.map((r) => (rowFlags(r).length ? css("--brand-warn") || "#ffb454" : "#ffffff")),
+          width: marks.map((r) => (rowFlags(r).length ? 1.6 : 1)),
+        },
       },
       text: marks.map(
-        (r) => `${r.display_name}: ${state.redshift > 0 ? "m" : "M"}<sub>AB</sub> = ${r.ab_mag}`
+        (r) =>
+          `${r.display_name}: ${state.redshift > 0 ? "m" : "M"}<sub>AB</sub> = ${r.ab_mag}` +
+          `<br>${attenuationText(r)}`,
       ),
       hovertemplate: "%{text}<extra>photometry</extra>",
     });
@@ -921,7 +1105,7 @@ let lastSedDrawMs = 0;
 function renderFrame(t, initial = false) {
   if (!state.frames) return;
   const { y, w, logAge } = interpFromFrames(state.frames, t);
-  const cur = toObserved(state.frames.wavelength, y, state.redshift);
+  const cur = toObserved(state.frames.wavelength, y, state.redshift, igmFactorFor(state.redshift));
   updateAgeChrome(t, w);
 
   const playing = clock.playing;
@@ -956,6 +1140,7 @@ function photometryKey() {
     mass: massMsun(),
     ...dustParams(),
     redshift: state.redshift,
+    ...igmParams(),
   });
 }
 
@@ -998,6 +1183,7 @@ async function runPhotometry() {
       mass: massMsun(),
       ...dustParams(),
       ...(state.redshift > 0 ? { redshift: state.redshift } : {}),
+      ...igmParams(),
     });
     if (token !== state.photRequest) return;
     state.dlMpc = data.luminosity_distance_mpc;
@@ -1060,6 +1246,41 @@ function sanitizeFilterName(name) {
   return cleaned.slice(0, 80) || "custom";
 }
 
+/** Requested-but-not-applied flags for one photometry row: [{text, title}]. */
+function rowFlags(entry) {
+  const flags = [];
+  if (entry.dust_status === "partial") {
+    flags.push({
+      text: "partial dust window",
+      title:
+        "Part of this passband lies outside the dust law's validity window (rest frame). " +
+        "Extinction was applied only where the law is defined; nothing was extrapolated.",
+    });
+  } else if (entry.dust_status === "not_applied") {
+    flags.push({
+      text: "outside dust window",
+      title:
+        "This passband lies entirely outside the dust law's validity window (rest frame), " +
+        "so the requested extinction was not applied here.",
+    });
+  }
+  if (entry.igm_status === "not_applied") {
+    flags.push({
+      text: "no IGM",
+      title:
+        "This passband reaches observed wavelengths below Lyα(1+z) but no IGM prescription " +
+        "is applied, so the magnitude is brighter than a real high-z observation would be.",
+    });
+  }
+  return flags;
+}
+
+function attenuationText(entry) {
+  const label = entry.attenuation_label || "unattenuated";
+  const flags = rowFlags(entry).map((f) => f.text);
+  return flags.length ? `${label} (${flags.join(", ")})` : label;
+}
+
 function rowHtml(entry) {
   const mag = entry.ab_mag === null || entry.ab_mag === undefined ? "—" : entry.ab_mag.toFixed(3);
   const name = entry.isCustom ? `<em>${escapeHtml(entry.display_name)}</em>` : entry.display_name;
@@ -1067,12 +1288,17 @@ function rowHtml(entry) {
   const checked = state.ticked.has(entry.key) ? " checked" : "";
   const partial =
     entry.coverage < 0.999
-      ? ` <span class="badge warn" title="Filter partially outside the SED wavelength range">partial</span>`
+      ? ` <span class="badge warn" title="Filter partially outside the SED wavelength range">partial coverage</span>`
       : "";
+  const label = escapeHtml(entry.attenuation_label || "unattenuated");
+  const flags = rowFlags(entry)
+    .map((f) => ` <span class="badge warn" title="${escapeHtml(f.title)}">${f.text}</span>`)
+    .join("");
   return (
     `<tr><td><input type="checkbox" data-key="${keyAttr}"${checked} title="Show passband + measured point on the plot"></td>` +
     `<td>${name}${partial}</td><td class="muted">${entry.group}</td>` +
-    `<td>${Math.round(entry.lambda_eff)}</td><td><strong>${mag}</strong></td></tr>`
+    `<td>${Math.round(entry.lambda_eff)}</td><td><strong>${mag}</strong></td>` +
+    `<td class="small">${label}${flags}</td></tr>`
   );
 }
 
@@ -1089,6 +1315,8 @@ async function customPhotometry(custom, ageIndex) {
     if (dust.rv) form.append("rv", String(dust.rv));
   }
   if (state.redshift > 0) form.append("redshift", String(state.redshift));
+  const igm = igmParams();
+  if (igm.igm) form.append("igm", igm.igm);
   const response = await fetch("/api/v1/photometry/custom", { method: "POST", body: form });
   if (!response.ok) {
     reportError(new Error((await response.json()).detail || "custom filter failed"));
@@ -1156,7 +1384,7 @@ function updateExportLinks() {
   if (state.popId === null) return;
   const ageIndex = Math.round(Number($("sl-age").value));
   const logAge = (6 + ageIndex * 0.1).toFixed(1);
-  const common = { log_age: logAge, mass: massMsun(), ...dustParams() };
+  const common = { log_age: logAge, mass: massMsun(), ...dustParams(), ...igmParams() };
   if (state.redshift > 0) common.redshift = state.redshift;
   $("lnk-csv").href = apiUrl(`/populations/${state.popId}/sed`, {
     ...common,
@@ -1185,6 +1413,7 @@ function liveLegendSpec(logAge) {
     dustLaw: dust.dust_law || "",
     ebv: dust.ebv,
     redshift: state.redshift,
+    igm: igmModelKey(),
     logAge,
   };
 }
@@ -1205,6 +1434,12 @@ function legendParts(spec) {
     { key: "mass", text: `10<sup>${exp}</sup> M☉`, html: true, relevant: mass !== 6 },
     { key: "dust", text: dust ? esc(dust) : "no dust", html: true, relevant: Boolean(dust) },
     { key: "redshift", text: `z=${z.toFixed(2)}`, relevant: z > 0 },
+    {
+      key: "igm",
+      text: spec.igm && spec.igm !== "none" ? `IGM ${esc(igmLabel(spec.igm))}` : "no IGM",
+      html: true,
+      relevant: Boolean(spec.igm && spec.igm !== "none"),
+    },
     {
       key: "age",
       text: Number.isFinite(spec.logAge) ? `logA=${Number(spec.logAge).toFixed(2)}` : "",
@@ -1343,6 +1578,16 @@ async function init() {
       option.title = law.note;
       $("sel-dust").appendChild(option);
     }
+    for (const model of meta.igm_models || []) {
+      const option = document.createElement("option");
+      option.value = model.key;
+      option.textContent = model.label;
+      option.title = model.note;
+      $("sel-igm").appendChild(option);
+    }
+    state.igmModel = meta.igm_default || state.igmModel;
+    $("sel-igm").value = state.igmModel;
+    updateIgmUi();
     if (meta.cosmology) {
       $("cosmo-note").title = meta.cosmology.label;
       $("sl-redshift").max = String(redshiftSliderMax());
@@ -1395,12 +1640,41 @@ $("sl-mass").addEventListener("input", () => {
   debounceReload();
 });
 
+function updateDustWindowNote() {
+  const law = $("sel-dust").value;
+  const lawMeta = state.meta.dust_laws.find((l) => l.key === law);
+  const note = $("dust-window-note");
+  note.hidden = !lawMeta;
+  if (lawMeta) {
+    const [lo, hi] = lawMeta.valid_range_a;
+    note.textContent = `Defined for ${Math.round(lo)}–${Math.round(hi)} Å (rest); not extrapolated outside`;
+  }
+}
+
 $("sel-dust").addEventListener("change", () => {
   const law = $("sel-dust").value;
   const lawMeta = state.meta.dust_laws.find((l) => l.key === law);
   $("grp-ebv").hidden = !law;
   $("grp-rv").hidden = !law || !lawMeta || lawMeta.fixed_rv !== null;
+  updateDustWindowNote();
   debounceReload();
+});
+
+$("chk-igm").addEventListener("change", () => {
+  state.igmOn = $("chk-igm").checked;
+  updateIgmUi();
+  invalidatePhotometry();
+  scheduleIgm();
+  schedulePhotometry();
+  updateExportLinks();
+});
+$("sel-igm").addEventListener("change", () => {
+  state.igmModel = $("sel-igm").value;
+  updateIgmUi();
+  invalidatePhotometry();
+  scheduleIgm();
+  schedulePhotometry();
+  updateExportLinks();
 });
 $("sl-ebv").addEventListener("input", () => {
   $("out-ebv").textContent = Number($("sl-ebv").value).toFixed(2);
@@ -1421,7 +1695,9 @@ $("sl-redshift").addEventListener("input", () => {
   if (state.redshift === 0) state.dlMpc = null;
   invalidatePhotometry();
   updateFrameNotes();
+  updateIgmUi();
   renderFrame(clock.t); // cheap client-side stretch — instant feedback
+  scheduleIgm(); // IGM transmission for the new z (server-side science)
   schedulePhotometry(); // authoritative mags + D_L from the server
 });
 $("chk-lyman").addEventListener("change", () => {
@@ -1478,7 +1754,8 @@ $("btn-pin").addEventListener("click", () => {
   if (!state.frames || state.trailOn) return;
   const { y, logAge } = interpFromFrames(state.frames, clock.t);
   const z = state.redshift;
-  const view = toObserved(state.frames.wavelength, y, z);
+  const igm = igmFactorFor(z);
+  const view = toObserved(state.frames.wavelength, y, z, igm);
   const basebits = labelBits().join(" · ");
   state.pins.push({
     id: ++state.pinSeq,
@@ -1486,6 +1763,8 @@ $("btn-pin").addEventListener("click", () => {
     basebits,
     legend: liveLegendSpec(logAge),
     z,
+    igm: igm ? igm.slice() : null,
+    igmModel: igmModelKey(z),
     massLog: Number($("sl-mass").value),
     frames: structuredClone(state.frames),
     series: cloneSeries(state.series),

@@ -103,7 +103,7 @@ wheels = [
 
 [[package]]
 name = "bib"
-version = "0.1.0a1"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
@@ -139,6 +139,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "synphot" },
 ]
 
 [package.metadata]
@@ -171,6 +172,7 @@ dev = [
     { name = "pytest", specifier = ">=8.2" },
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "ruff", specifier = ">=0.6" },
+    { name = "synphot", specifier = ">=1.4" },
 ]
 
 [[package]]
@@ -1521,6 +1523,34 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b5/b4/205b0d5241d934e8add0c38aa924c4f9fb7330834ff11e5444db964ec3f9/starlette-1.6.0.tar.gz", hash = "sha256:d4e3ac5e546444960c710297a3c9fc3f7ebae1b7e963f3d36173b49da535be9b", size = 2716969, upload-time = "2026-08-08T18:27:57.512Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/cb/6a6a47d5b464bd08695d254f3da6e7986cc70c9fa5d778eda57538edfe56/starlette-1.6.0-py3-none-any.whl", hash = "sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c", size = 75969, upload-time = "2026-08-08T18:27:56.196Z" },
+]
+
+[[package]]
+name = "synphot"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "astropy" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bb/3d/01b124652f14810edf0c7b9047c99a03585657c01b22e605f393cc01b3d9/synphot-1.7.0.tar.gz", hash = "sha256:acd0fff408008a93c43bfbaf27e7c8ccee271d644d62152e4ad2b7462619f9dc", size = 1364276, upload-time = "2026-03-07T03:35:13.157Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/df/d18ed7d824e3948f7b1ff1e0b47ae26d359a6562d74a20dfa20aa11b7ab3/synphot-1.7.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:cefe738d1e807a7b79d4bee62df02411dbe25f7f4eeccd91d7b80dc51bcad7c6", size = 907082, upload-time = "2026-03-07T03:34:47.558Z" },
+    { url = "https://files.pythonhosted.org/packages/42/c2/4f12f4835a6cad09540706b0ae61be2d7a247e451c2674dec68702e2bccb/synphot-1.7.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:c77ffd51ffed10dbad202c64673596d4d4f167534e1e51ad1a4b484297e1736a", size = 907374, upload-time = "2026-03-07T03:34:49.878Z" },
+    { url = "https://files.pythonhosted.org/packages/22/1e/931750ed450167468590533dac85e71b15445290c9dbd75b8dd3ff667b7c/synphot-1.7.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:79e959f44944200725db60925dd89bac3ef57c9ccd57ef74cd63333be215b108", size = 917325, upload-time = "2026-03-07T03:34:51.641Z" },
+    { url = "https://files.pythonhosted.org/packages/42/b6/6f718aa69977d85b35d0c977b54402feecca6dc20833b918c80f8344fcfc/synphot-1.7.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:79139f14a90c6bf6bf1a639f4b2b41f8015a9915388f26b3dac9e1e0b179df14", size = 917316, upload-time = "2026-03-07T03:34:53.495Z" },
+    { url = "https://files.pythonhosted.org/packages/50/f1/5e303d5bb73511a3779e45f234146b3322348bd7aa4d37f756deff4d2eeb/synphot-1.7.0-cp312-cp312-win_amd64.whl", hash = "sha256:a5dd6b012bca6244ee64e4793ffde8024999633601b94f50b077098264771f9e", size = 910656, upload-time = "2026-03-07T03:34:54.942Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/43/e933ff0457159573d327020bd1ce04b244ee5d250da9bafff3766c8fee8c/synphot-1.7.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:4420f88b85276e2fe7f7a5c9e5d18bc66a49c36a55e360399e4fda75f2af4e51", size = 907085, upload-time = "2026-03-07T03:34:56.449Z" },
+    { url = "https://files.pythonhosted.org/packages/83/ab/29fb89efcbe1e65700703c8fd0288d13707c321e085f81af6f6eae9cd61f/synphot-1.7.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:90790ddede7354b2964f3015ae8e57344ceab2a3e1a50d76365123880f6c941e", size = 907380, upload-time = "2026-03-07T03:34:58.073Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/a6/12bb01258fafdb3bea12f8ecaca4dae5c03893fe426100d35098efddb21d/synphot-1.7.0-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:6bf64e62a6a34bc4072a6f11ab9671283fa3211ea8b71a9345eb006dabb70a4d", size = 917346, upload-time = "2026-03-07T03:35:00.084Z" },
+    { url = "https://files.pythonhosted.org/packages/84/9d/e9d5a741907fa1e553cbb261d7871cd34eae17fc8718bf1ef9e9f1666fe6/synphot-1.7.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:e81280915f944213ec2d5f56c6d4dcaf3f59901c9aa8dac86bba1e088abd0e63", size = 917344, upload-time = "2026-03-07T03:35:01.61Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/43/bbeb5de409d86418d41d1fd5aff11c8a7152f181623e1fc74377d3ff0677/synphot-1.7.0-cp313-cp313-win_amd64.whl", hash = "sha256:5afb08da9a634af85dbbb753ba70ac468baeeff2bd02d7cb4fd08a7df4dbe701", size = 910654, upload-time = "2026-03-07T03:35:03.163Z" },
+    { url = "https://files.pythonhosted.org/packages/86/4c/001fa4901d9ade4e7bd957e44d4b49cc41bd7fbb843f9292f8707af2d27c/synphot-1.7.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:7d57b670cd1e1d1a820ca32b478b62f3e2550bb1b119d3ad6c3fa894ee8e0e3a", size = 907127, upload-time = "2026-03-07T03:35:04.815Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/3e/d01131109d2f3b4a8a8a9bbd16b7d6eb0ff9dfc15e5a1314fae4b2b535e7/synphot-1.7.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:9062121c87f4287cba8dcc29bab05bc1a1f471219760b90741f8732922baf4e7", size = 907395, upload-time = "2026-03-07T03:35:06.608Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/f2/2ab45f3ccfd765ebe70cd18f631aefccac66185a54f302d182a6c6f41f4c/synphot-1.7.0-cp314-cp314-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:43e18635ab59d0334f0f2f32cbc828a79851e36475a974de97fcbd332f227048", size = 917445, upload-time = "2026-03-07T03:35:08.1Z" },
+    { url = "https://files.pythonhosted.org/packages/95/e8/bf5fac9d35d716d9477684bf55d36f17fe09962f2e6c29e7193a9897684f/synphot-1.7.0-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:452167a1bb67354b92b28dfebd539ffa55267725dd2f0e254a18ccf55645482b", size = 917400, upload-time = "2026-03-07T03:35:09.597Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/06/d8a8b1a2ac0b8e4106fbe338a8272fd822082a8f046a9ae77438f40a4e9e/synphot-1.7.0-cp314-cp314-win_amd64.whl", hash = "sha256:1cc51eec85bcc6869a0c779200f449a2769f6ded48a76c6f24cad8498decf81b", size = 945329, upload-time = "2026-03-07T03:35:11.543Z" },
 ]
 
 [[package]]

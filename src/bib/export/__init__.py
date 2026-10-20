@@ -11,8 +11,8 @@ from bib.export.table import ExportTable
 __all__ = [
     "EXPORT_FORMATS",
     "EXPORT_UNITS",
-    "ExportTable",
     "PRODUCTS",
+    "ExportTable",
     "build_export",
     "find_populations",
     "product_options",

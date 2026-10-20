@@ -19,9 +19,7 @@ def test_purge_demo_removes_synthetic_then_reseed():
         purge_demo(console=quiet)
         with session_scope() as session:
             n_pop = session.scalar(
-                select(func.count())
-                .select_from(m.Population)
-                .where(m.Population.is_synthetic)
+                select(func.count()).select_from(m.Population).where(m.Population.is_synthetic)
             )
             n_rel = session.scalar(
                 select(func.count()).select_from(m.Release).where(m.Release.version == "demo")
@@ -32,8 +30,6 @@ def test_purge_demo_removes_synthetic_then_reseed():
         seed_demo(force=False, console=quiet)
         with session_scope() as session:
             n_pop = session.scalar(
-                select(func.count())
-                .select_from(m.Population)
-                .where(m.Population.is_synthetic)
+                select(func.count()).select_from(m.Population).where(m.Population.is_synthetic)
             )
         assert n_pop > 0

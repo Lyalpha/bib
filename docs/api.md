@@ -22,16 +22,17 @@ from the public schema.
 |---|---|
 | `GET /api/v1/health` | liveness (no database; `{"status":"ok","version":…}`) |
 | `GET /api/v1/ready` | readiness (`SELECT 1`; 200 `{"status":"ok"}` or 503 `{"status":"unavailable"}`) |
-| `GET /api/v1/meta` | releases, populations (`imf` plus parsed `imf_info`), unique `imfs` with ξ curves, age grid, dust laws |
+| `GET /api/v1/meta` | releases, populations (`imf` plus parsed `imf_info`), unique `imfs` with ξ curves, age grid, dust laws (with validity windows and R_V ranges), IGM models |
 | `GET /api/v1/populations` | list/filter populations (`release`, `imf`, `z_label`, `pop_type`, `alpha_label`); each row has `id` |
 | `GET /api/v1/populations/{id}` | detail incl. provenance and per-age bolometric luminosities |
-| `GET /api/v1/populations/{id}/sed` | one native-resolution SED; `log_age`, `mass`, `dust_law`, `ebv`, `rv`, `format=json\|csv` |
+| `GET /api/v1/populations/{id}/sed` | one native-resolution SED; `log_age`, `mass`, `dust_law`, `ebv`, `rv`, `redshift`, `igm`, `format=json\|csv` |
+| `GET /api/v1/igm_transmission` | mean IGM transmission on a population's display grid (`population_id`, `redshift`, `model`) |
 | `GET /api/v1/populations/{id}/timeseries` | per-age tables: `colours`, `ionizing`, `starmass`, `sn_rates`, `yields`, `mlratio`, `star_counts` |
 | `GET /api/v1/filters` | bundled filter metadata |
 | `GET /api/v1/filters/{name}/curve` | transmission curve |
 | `GET /api/v1/export/options` | products, unit systems and file formats for the Fetch data page |
 | `GET /api/v1/export` | download by IMF / Z / age (`product`, `units`, `format=csv\|json\|ecsv\|ascii`) |
-| `GET /api/v1/photometry` | absolute AB magnitudes through bundled filters (`population_id`, `log_age`) |
+| `GET /api/v1/photometry` | AB magnitudes through bundled filters (`population_id`, `log_age`, optional `redshift`, `dust_law`, `ebv`, `rv`, `igm`) |
 | `POST /api/v1/photometry/custom` | upload a transmission curve, get its AB magnitude |
 
 ## Examples
@@ -60,6 +61,10 @@ curl -s "localhost:8000/api/v1/populations/{id}/sed?log_age=9.0&dust_law=smc&ebv
 # absolute AB magnitudes through SDSS g and r for that SED (source at 10 pc)
 curl -s "localhost:8000/api/v1/photometry?population_id={id}&log_age=9.0&filters=sdss.g,sdss.r" | jq .photometry
 
+# apparent magnitudes at z=6 with Inoue+14 IGM attenuation; each row says what was applied
+curl -s "localhost:8000/api/v1/photometry?population_id={id}&log_age=7.0&redshift=6&igm=inoue14&filters=jwst.f090w,jwst.f200w" \
+  | jq '.photometry[] | {filter, ab_mag, dust_status, igm_status, attenuation_label}'
+
 # custom filter upload (two-column wavelength [Å], transmission)
 curl -s -F "file=@myfilter.txt" -F population_id={id} -F log_age=9.0 \
      localhost:8000/api/v1/photometry/custom | jq .result
@@ -71,16 +76,39 @@ curl -s "localhost:8000/api/v1/export?product=sed&imf=imf135_300&z_label=z020&po
 curl -s "localhost:8000/api/v1/export?product=ionizing&imf=imf135_300&pop_type=bin&all_z=true&log_age=7.0&units=physical&format=json"
 ```
 
+## Attenuation parameters
+
+`sed`, `photometry`, `photometry/custom` and `export` share one pipeline,
+applied in this order: `mass` → dust (rest frame) → `redshift` → IGM
+(observer frame).
+
+| parameter | values | notes |
+|---|---|---|
+| `dust_law` | `ccm89`, `f99`, `calzetti00`, `smc` | foreground screen; applied **only inside** the law's validity window, never extrapolated |
+| `ebv` | 0–5 | E(B−V); 0 disables dust |
+| `rv` | 2.0–6.0 | CCM89/F99 only (ignored for fixed-R_V laws); outside the range → 422 |
+| `redshift` | 0–20 | 0 = rest frame / absolute magnitudes at 10 pc |
+| `igm` | `none` (default), `inoue14`, `madau95` | mean IGM transmission for λ_obs < Lyα(1+z); no effect at z = 0 |
+
+Responses carry `dust` (law, E(B−V), effective `rv`, `a_v`, `applied_range_a`
+rest / `applied_range_obs_a` observed, `extrapolated: false`), `igm`
+(`model`, `label`, `lyman_alpha_obs_a`) or `null`, and a `pipeline` list.
+
+### Per-filter status vocabulary
+
+Every photometry entry (API, custom upload, export columns) includes:
+
+| field | values | meaning |
+|---|---|---|
+| `dust_status` | `none` · `applied` · `partial` · `not_applied` | no dust requested · passband (rest frame) fully inside the law's window · straddles an edge · entirely outside, so the requested extinction was not applied |
+| `igm_status` | `none` · `applied` · `not_applied` | IGM irrelevant (z = 0 or passband redward of Lyα(1+z)) · model applied · passband reaches below Lyα(1+z) but `igm=none` |
+| `attenuation_label` | `dust-extinguished` · `IGM-attenuated` · `dust-extinguished, IGM-attenuated` · `unattenuated` | human-readable summary (a `partial` dust window still counts as dust-extinguished) |
+
 ## Payload conventions
 
 - Numbers in JSON spectra are rounded to display precision (4 significant
   digits for flux); request **CSV** for full precision.
-- AB magnitudes are absolute (source at 10 pc) and rounded to 4 decimals; each
-  entry carries `lambda_eff` and a `coverage` fraction, and `ab_mag` is `null`
-  when the filter misses the SED entirely.
-- HRD grids are quantized to uint8 on a log scale for compactness:
-  `value = 10^(lo + q/255·(hi−lo))` for `q > 0`, `q = 0` means empty; `lo`/`hi`
-  are in the `scale` object.
-- Track arrays are decimated to `max_points` (default 1500) while always
-  preserving event timesteps; `mdot1` is a finite-difference rate (see the
-  [science notes](science-notes.md#stellar-tracks-and-mass-loss-rates)).
+- AB magnitudes are absolute (source at 10 pc) unless `redshift>0`, and
+  rounded to 4 decimals; each entry carries `lambda_eff`, a `coverage`
+  fraction and the status fields above, and `ab_mag` is `null` when the
+  filter misses the SED entirely.

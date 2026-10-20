@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import json
-from io import StringIO
+from collections.abc import Iterator
 
 import numpy as np
 import yaml
@@ -35,33 +34,36 @@ def _comment_block(table: ExportTable, extra: list[str] | None = None) -> list[s
     return lines
 
 
-def render_csv(table: ExportTable) -> str:
-    buf = StringIO()
-    for line in _comment_block(table):
-        buf.write(line + "\n")
+def _column_comments(table: ExportTable) -> Iterator[str]:
     for col in table.columns:
-        buf.write(f"# column {col.name} [{col.unit}] — {col.description}\n")
-    buf.write(",".join(c.name for c in table.columns) + "\n")
-    rows = zip(*(c.as_list() for c in table.columns), strict=True)
-    for row in rows:
-        buf.write(",".join(_cell(v, c.datatype) for v, c in zip(row, table.columns, strict=True)) + "\n")
-    return buf.getvalue()
+        yield f"# column {col.name} [{col.unit}] — {col.description}\n"
 
 
-def render_ascii(table: ExportTable) -> str:
-    buf = StringIO()
+def _rows(table: ExportTable, sep: str) -> Iterator[str]:
+    """Yield one serialised data row at a time (no full-table string in memory)."""
+    columns = table.columns
+    lists = [c.as_list() for c in columns]
+    for row in zip(*lists, strict=True):
+        yield sep.join(_cell(v, c.datatype) for v, c in zip(row, columns, strict=True)) + "\n"
+
+
+def iter_csv(table: ExportTable) -> Iterator[str]:
     for line in _comment_block(table):
-        buf.write(line + "\n")
-    for col in table.columns:
-        buf.write(f"# column {col.name} [{col.unit}] — {col.description}\n")
-    buf.write("# " + " ".join(c.name for c in table.columns) + "\n")
-    rows = zip(*(c.as_list() for c in table.columns), strict=True)
-    for row in rows:
-        buf.write(" ".join(_cell(v, c.datatype) for v, c in zip(row, table.columns, strict=True)) + "\n")
-    return buf.getvalue()
+        yield line + "\n"
+    yield from _column_comments(table)
+    yield ",".join(c.name for c in table.columns) + "\n"
+    yield from _rows(table, ",")
 
 
-def render_ecsv(table: ExportTable) -> str:
+def iter_ascii(table: ExportTable) -> Iterator[str]:
+    for line in _comment_block(table):
+        yield line + "\n"
+    yield from _column_comments(table)
+    yield "# " + " ".join(c.name for c in table.columns) + "\n"
+    yield from _rows(table, " ")
+
+
+def iter_ecsv(table: ExportTable) -> Iterator[str]:
     datatype = [
         {
             "name": c.name,
@@ -78,18 +80,26 @@ def render_ecsv(table: ExportTable) -> str:
         "schema": "astropy-2.0",
     }
     dumped = yaml.safe_dump(header, sort_keys=False, allow_unicode=True).rstrip()
-    buf = StringIO()
-    buf.write("# %ECSV 1.0\n")
-    buf.write("# ---\n")
+    yield "# %ECSV 1.0\n"
+    yield "# ---\n"
     for line in dumped.splitlines():
-        buf.write(f"# {line}\n")
+        yield f"# {line}\n"
     for line in _comment_block(table):
-        buf.write(line + "\n")
-    buf.write(",".join(c.name for c in table.columns) + "\n")
-    rows = zip(*(c.as_list() for c in table.columns), strict=True)
-    for row in rows:
-        buf.write(",".join(_cell(v, c.datatype) for v, c in zip(row, table.columns, strict=True)) + "\n")
-    return buf.getvalue()
+        yield line + "\n"
+    yield ",".join(c.name for c in table.columns) + "\n"
+    yield from _rows(table, ",")
+
+
+def render_csv(table: ExportTable) -> str:
+    return "".join(iter_csv(table))
+
+
+def render_ascii(table: ExportTable) -> str:
+    return "".join(iter_ascii(table))
+
+
+def render_ecsv(table: ExportTable) -> str:
+    return "".join(iter_ecsv(table))
 
 
 def render_json(table: ExportTable) -> dict:
@@ -109,13 +119,14 @@ def render_export(table: ExportTable, fmt: str) -> Response:
     if fmt == "json":
         return JSONResponse(render_json(table), headers={"Content-Disposition": disposition})
     if fmt == "csv":
-        body = render_csv(table)
+        body = iter_csv(table)
     elif fmt == "ecsv":
-        body = render_ecsv(table)
+        body = iter_ecsv(table)
     else:
-        body = render_ascii(table)
+        body = iter_ascii(table)
+    # Streamed line by line: large SED tables never exist as one string in memory.
     return StreamingResponse(
-        iter([body]),
+        body,
         media_type=spec["media"],
         headers={"Content-Disposition": disposition},
     )

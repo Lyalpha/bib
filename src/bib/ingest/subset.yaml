@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------------
+# bib real-data validation subset.
+#
+# One fiducial BPASS v2.2.1 population (imf135_300, Z = 0.002, binaries)
+# with the three products the science regression tests compare against:
+# the SED grid, the published Vega colours and the ionizing-photon table.
+#
+# Fetch the files with `uv run python scripts/fetch_bpass_subset.py`, then
+#   uv run bib ingest data/raw/bpass-subset --manifest src/bib/ingest/subset.yaml
+# or simply run `uv run pytest -m realdata`, which ingests it into the test
+# database for you.
+# ---------------------------------------------------------------------------
+
+releases:
+  "2.2.1":
+    name: "Tuatara"
+    url: "https://bpass.auckland.ac.nz"
+    citation: >-
+      Eldridge, Stanway et al. (2017), PASA 34, e058;
+      Stanway & Eldridge (2018), MNRAS 479, 75.
+    notes: "Primary BPASS release for population synthesis outputs."
+
+populations:
+  - release: "2.2.1"
+    imf: imf135_300
+    pop_types: [bin]
+    metallicities: [z002]
+    products: [spectra, colours, ionizing]

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import numpy as np
 import pytest
 
@@ -46,7 +44,9 @@ def test_export_options_lists_ssp_products(api_client):
 
 
 def test_export_sed_csv_has_units_and_query(api_client, export_sel):
-    response = api_client.get("/api/v1/export", params={**export_sel, "product": "sed", "format": "csv"})
+    response = api_client.get(
+        "/api/v1/export", params={**export_sel, "product": "sed", "format": "csv"}
+    )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     text = response.text
@@ -67,7 +67,13 @@ def test_export_physical_scales_ionizing(api_client, export_sel):
     ).json()
     physical = api_client.get(
         "/api/v1/export",
-        params={**export_sel, "product": "ionizing", "units": "physical", "mass": 1.0, "format": "json"},
+        params={
+            **export_sel,
+            "product": "ionizing",
+            "units": "physical",
+            "mass": 1.0,
+            "format": "json",
+        },
     ).json()
     assert native["meta"]["formed_mass_msun"] == 1e6
     assert physical["meta"]["formed_mass_msun"] == 1.0
@@ -76,7 +82,7 @@ def test_export_physical_scales_ionizing(api_client, export_sel):
     log_n = native["data"]["log_nion"][0]
     nion = physical["data"]["nion"][0]
     if log_n is not None and nion is not None:
-        np.testing.assert_allclose(nion, (10 ** log_n) / 1e6, rtol=1e-6)
+        np.testing.assert_allclose(nion, (10**log_n) / 1e6, rtol=1e-6)
 
 
 def test_export_all_z_ionizing(api_client, export_sel):
@@ -146,3 +152,45 @@ def test_request_page_renders(client):
     assert "As published" in html
     assert "Physical" in html
     assert 'id="btn-download"' in html
+
+
+def test_export_photometry_carries_attenuation_flags_and_igm(api_client, export_sel):
+    response = api_client.get(
+        "/api/v1/export",
+        params={
+            **export_sel,
+            "product": "photometry",
+            "redshift": 2.5,
+            "igm": "inoue14",
+            "dust_law": "ccm89",
+            "ebv": 0.1,
+            "filters": "sdss.g,jwst.f444w",
+            "format": "json",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    meta = payload["meta"]
+    assert meta["igm"] == "inoue14" and meta["uses_igm"] is True
+    assert meta["rv"] == 3.1  # effective R_V recorded even when not passed
+    assert meta["dust_valid_range_a"][0] == pytest.approx(1000.0, abs=0.1)
+    assert any("igm: Inoue et al. (2014)" in c for c in payload["comments"])
+    assert any(c.startswith("pipeline: mass -> dust") for c in payload["comments"])
+    data = payload["data"]
+    assert {"dust_status", "igm_status", "attenuation_label"} <= set(data)
+    by_filter = dict(zip(data["filter"], data["attenuation_label"], strict=True))
+    assert by_filter["sdss.g"] == "dust-extinguished, IGM-attenuated"
+    assert by_filter["jwst.f444w"] == "dust-extinguished"
+
+    # export options advertise the option so the request page can show it
+    options = api_client.get("/api/v1/export/options").json()
+    uses = {p["key"]: p["uses_igm"] for p in options["products"]}
+    assert uses["photometry"] and uses["sed"] and not uses["ionizing"]
+
+
+def test_export_rejects_rv_outside_supported_range(api_client, export_sel):
+    response = api_client.get(
+        "/api/v1/export",
+        params={**export_sel, "product": "sed", "dust_law": "ccm89", "ebv": 0.1, "rv": 7.0},
+    )
+    assert response.status_code == 422

@@ -29,7 +29,7 @@ def is_limited(request: Request, settings: Settings) -> bool:
         return True
     if method != "GET":
         return False
-    if path == "/api/v1/photometry":
+    if path in ("/api/v1/photometry", "/api/v1/export"):
         return True
     if path.endswith("/sed_frames"):
         return True
@@ -54,7 +54,9 @@ class RateLimiter:
             allowed = tokens >= 1.0
             self._state[key] = (tokens - 1.0 if allowed else tokens, now)
             if len(self._state) > 8000:
-                stale = [k for k, (t, ts) in self._state.items() if now - ts > 300 and t >= self.burst]
+                stale = [
+                    k for k, (t, ts) in self._state.items() if now - ts > 300 and t >= self.burst
+                ]
                 for k in stale[:4000]:
                     del self._state[k]
             return allowed

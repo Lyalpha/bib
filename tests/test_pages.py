@@ -35,11 +35,9 @@ def test_sed_url_redirects_to_ssp(client):
     assert response.headers["location"].endswith("/ssp")
 
 
-def test_star_explorer_is_parked(client):
+def test_star_explorer_routes_are_gone(client):
     for path in ("/star", "/hr"):
-        response = client.get(path, follow_redirects=False)
-        assert response.status_code in (301, 302, 307, 308)
-        assert response.headers["location"].endswith("/")
+        assert client.get(path, follow_redirects=False).status_code == 404
 
 
 def test_landing_carries_official_acknowledgements(client):

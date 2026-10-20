@@ -9,9 +9,7 @@ def test_user_config_env_used_when_cwd_has_no_dotenv(tmp_path, monkeypatch):
     home = tmp_path / "home"
     env_path = home / ".config" / "bib" / "env"
     env_path.parent.mkdir(parents=True)
-    env_path.write_text(
-        "BIB_DATABASE_URL=postgresql+psycopg://bib_app:secret@127.0.0.1:5432/bib\n"
-    )
+    env_path.write_text("BIB_DATABASE_URL=postgresql+psycopg://bib_app:secret@127.0.0.1:5432/bib\n")
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.delenv("BIB_DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
@@ -28,9 +26,7 @@ def test_cwd_dotenv_overrides_user_config_env(tmp_path, monkeypatch):
     home = tmp_path / "home"
     env_path = home / ".config" / "bib" / "env"
     env_path.parent.mkdir(parents=True)
-    env_path.write_text(
-        "BIB_DATABASE_URL=postgresql+psycopg://bib_app:secret@127.0.0.1:5432/bib\n"
-    )
+    env_path.write_text("BIB_DATABASE_URL=postgresql+psycopg://bib_app:secret@127.0.0.1:5432/bib\n")
     (tmp_path / ".env").write_text(
         "BIB_DATABASE_URL=postgresql+psycopg://local:dev@localhost:5433/bib_test\n"
     )

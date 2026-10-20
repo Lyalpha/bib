@@ -22,7 +22,7 @@ def resolve_age_index(age_index: int | None, log_age: float | None) -> int:
             detail="provide log_age (log10(age/yr) on the 0.1 dex grid 6.0–11.0) or age_index",
         )
     if log_age is not None:
-        idx = int(round((float(log_age) - 6.0) / 0.1))
+        idx = round((float(log_age) - 6.0) / 0.1)
         if idx < 0 or idx >= BPASS_LOG_AGES.size:
             raise HTTPException(status_code=422, detail="log_age must be between 6.0 and 11.0")
         if age_index is not None and int(age_index) != idx:
@@ -53,13 +53,6 @@ def get_population_or_404(session: Session, population_id: int) -> m.Population:
     return population
 
 
-def get_model_or_404(session: Session, model_id: int) -> m.StellarModel:
-    model = session.get(m.StellarModel, model_id)
-    if model is None:
-        raise HTTPException(status_code=404, detail=f"stellar model {model_id} not found")
-    return model
-
-
 def population_summary(p: m.Population) -> dict:
     return {
         "id": p.id,
@@ -73,4 +66,6 @@ def population_summary(p: m.Population) -> dict:
         "alpha_value": p.alpha_value,
         "is_synthetic": p.is_synthetic,
         "products": (p.extra or {}).get("products", []),
+        # Count of negative native-SED flux values set to zero at ingest (data-quality note).
+        "n_negative_clamped": (p.extra or {}).get("n_negative_clamped"),
     }

@@ -72,10 +72,6 @@ def print_info(console: Console | None = None) -> None:
                 m.Yields,
                 m.MLRatio,
                 m.StarCounts,
-                m.HrdGrid,
-                m.StellarModel,
-                m.StellarModelStep,
-                m.ModelEvent,
                 m.Filter,
             ):
                 count = session.execute(select(func.count()).select_from(model)).scalar()

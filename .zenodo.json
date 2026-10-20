@@ -1,0 +1,55 @@
+{
+  "title": "bib — BPASS-in-Browser",
+  "version": "0.1.0",
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "language": "eng",
+  "description": "<p>A pedagogical web explorer and REST API for BPASS (Binary Population and Spectral Synthesis) simple-stellar-population products: interactive SEDs, photon-weighted synthetic AB photometry through SVO filter curves, screen dust extinction within each law's validity window, redshifting with flat ΛCDM distances, and optional IGM attenuation (Inoue et al. 2014; Madau 1995), with per-filter flags stating what was applied.</p><p>bib serves derived BPASS products under the BPASS team's CC BY-NC 4.0 licence with attribution; the software itself is MIT licensed.</p>",
+  "creators": [
+    {
+      "name": "<Family name>, <Given names>",
+      "orcid": "<ORCID>",
+      "affiliation": "<affiliation>"
+    }
+  ],
+  "keywords": [
+    "astronomy",
+    "BPASS",
+    "stellar populations",
+    "spectral synthesis",
+    "synthetic photometry"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.1017/pasa.2017.51",
+      "relation": "cites",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1093/mnras/sty1353",
+      "relation": "cites",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1093/mnras/stac807",
+      "relation": "cites",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1093/mnras/stu936",
+      "relation": "cites",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1086/175332",
+      "relation": "cites",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    }
+  ]
+}

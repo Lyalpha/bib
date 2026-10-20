@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from bib.db import models as m
 from bib.db.session import get_db
 from bib.science.dust import DUST_LAWS
+from bib.science.igm import IGM_MODELS, LYMAN_ALPHA_A
 from bib.science.imf import describe_imf, unique_imf_payloads
 from bib.science.redshift import COSMOLOGY_LABEL, MAX_REDSHIFT
 from bib.science.sed import BPASS_LOG_AGES
@@ -22,7 +23,9 @@ def get_meta(db: Session = Depends(get_db)) -> dict:
     releases = []
     for release in db.scalars(select(m.Release).order_by(m.Release.version)):
         count = db.scalar(
-            select(func.count()).select_from(m.Population).where(m.Population.release_id == release.id)
+            select(func.count())
+            .select_from(m.Population)
+            .where(m.Population.release_id == release.id)
         )
         if not count:
             continue
@@ -49,9 +52,8 @@ def get_meta(db: Session = Depends(get_db)) -> dict:
         )
     ).all()
 
-    has_synthetic = bool(
-        db.scalar(select(m.Population.id).where(m.Population.is_synthetic).limit(1))
-        or db.scalar(select(m.StellarModel.id).where(m.StellarModel.is_synthetic).limit(1))
+    has_synthetic = (
+        db.scalar(select(m.Population.id).where(m.Population.is_synthetic).limit(1)) is not None
     )
 
     return {
@@ -77,10 +79,18 @@ def get_meta(db: Session = Depends(get_db)) -> dict:
                 "note": law.note,
                 "fixed_rv": law.fixed_rv,
                 "default_rv": law.default_rv,
+                "rv_range": list(law.rv_range) if law.rv_range else None,
                 "valid_range_a": list(law.wavelength_range_a),
+                "extrapolated": False,
             }
             for law in DUST_LAWS.values()
         ],
+        "igm_models": [
+            {"key": model.key, "label": model.label, "note": model.note}
+            for model in IGM_MODELS.values()
+        ],
+        "igm_default": "inoue14",
+        "lyman_alpha_a": LYMAN_ALPHA_A,
         "imfs": unique_imf_payloads([r.imf for r in rows]),
         "has_synthetic": has_synthetic,
         "cosmology": {

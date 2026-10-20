@@ -1,0 +1,88 @@
+# Citation metadata for bib (Citation File Format 1.2.0).
+# Validate with: uvx cffconvert --validate
+# Replace the <placeholders> before tagging a release; keep in sync with
+# .zenodo.json, pyproject.toml and src/bib/__init__.py.
+cff-version: 1.2.0
+message: >-
+  If you use bib, please cite it using the metadata below and acknowledge the
+  BPASS release papers listed under "references".
+type: software
+title: "bib — BPASS-in-Browser"
+abstract: >-
+  A pedagogical web explorer and REST API for BPASS (Binary Population and
+  Spectral Synthesis) simple-stellar-population products: interactive SEDs,
+  photon-weighted synthetic AB photometry through SVO filter curves, screen
+  dust extinction within each law's validity window, redshifting with flat
+  ΛCDM distances, and optional IGM attenuation (Inoue et al. 2014;
+  Madau 1995), with per-filter flags stating what was applied.
+version: 0.1.0
+date-released: "2026-10-20"
+license: MIT
+repository-code: "https://example.org/<repository URL>"
+url: "https://example.org/<final domain>"
+keywords:
+  - astronomy
+  - BPASS
+  - stellar populations
+  - spectral synthesis
+  - synthetic photometry
+authors:
+  - family-names: "<Family name>"
+    given-names: "<Given names>"
+    orcid: "https://orcid.org/0000-0000-0000-0000"  # <ORCID> placeholder
+    affiliation: "<affiliation>"
+references:
+  - type: article
+    title: "Binary Population and Spectral Synthesis Version 2.0: Photometric and Spectroscopic Predictions for Stellar Populations"
+    authors:
+      - family-names: Eldridge
+        given-names: J. J.
+      - family-names: Stanway
+        given-names: E. R.
+      - family-names: Xiao
+        given-names: L.
+      - family-names: McClelland
+        given-names: L. A. S.
+      - family-names: Taylor
+        given-names: G.
+      - family-names: Ng
+        given-names: M.
+      - family-names: Greis
+        given-names: S. M. L.
+      - family-names: Bray
+        given-names: J. C.
+    journal: Publications of the Astronomical Society of Australia
+    volume: 34
+    start: e058
+    year: 2017
+    doi: 10.1017/pasa.2017.51
+  - type: article
+    title: "Re-evaluating old stellar populations"
+    authors:
+      - family-names: Stanway
+        given-names: E. R.
+      - family-names: Eldridge
+        given-names: J. J.
+    journal: Monthly Notices of the Royal Astronomical Society
+    volume: 479
+    start: 75
+    year: 2018
+    doi: 10.1093/mnras/sty1353
+  - type: article
+    title: "Dependence of stellar population spectra on α-element enhancement"
+    authors:
+      - family-names: Byrne
+        given-names: C. M.
+      - family-names: Stanway
+        given-names: E. R.
+      - family-names: Eldridge
+        given-names: J. J.
+      - family-names: McSwiney
+        given-names: L.
+      - family-names: Townsend
+        given-names: O. T.
+    journal: Monthly Notices of the Royal Astronomical Society
+    volume: 512
+    start: 5329
+    year: 2022
+    doi: 10.1093/mnras/stac807

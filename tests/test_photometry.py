@@ -30,8 +30,11 @@ def ab_flat_sed(wl: np.ndarray) -> np.ndarray:
 def box_filter(lo: float, hi: float, n: int = 200, detector: str = "photon") -> FilterCurve:
     wl = np.linspace(lo, hi, n)
     return FilterCurve(
-        name="box", display_name="box", wavelength=wl,
-        transmission=np.ones(n), detector_type=detector,
+        name="box",
+        display_name="box",
+        wavelength=wl,
+        transmission=np.ones(n),
+        detector_type=detector,
     )
 
 
@@ -95,7 +98,8 @@ def test_coarse_sed_evaluated_on_filter_grid():
 
 def test_filter_curve_sorts_and_clips():
     curve = FilterCurve(
-        name="messy", display_name="messy",
+        name="messy",
+        display_name="messy",
         wavelength=np.array([6000.0, 4000.0, 5000.0, 4500.0]),
         transmission=np.array([0.5, -0.1, 1.0, 0.7]),
     )
@@ -123,7 +127,8 @@ def test_percent_scale_filter_normalizes_and_matches_unit_scale():
 def test_filter_curve_rejects_zero_transmission():
     with pytest.raises(ValueError, match="identically zero"):
         FilterCurve(
-            name="dead", display_name="dead",
+            name="dead",
+            display_name="dead",
             wavelength=np.linspace(4000, 5000, 10),
             transmission=np.zeros(10),
         )

@@ -43,7 +43,7 @@ class ExportTable:
 
     @property
     def n_rows(self) -> int:
-        return 0 if not self.columns else int(len(self.columns[0].values))
+        return 0 if not self.columns else len(self.columns[0].values)
 
     def column_records(self) -> list[dict]:
         return [

@@ -54,7 +54,16 @@ def test_admin_401_and_200_with_token():
             login = client.post("/_ops/login", data={"token": token}, follow_redirects=False)
             assert login.status_code in {302, 303}
             cookie = login.cookies.get("bib_ops")
-            assert cookie == token
+            assert cookie and cookie != token  # hashed session value, never the raw token
+            assert token not in cookie
+            # the hashed cookie value is not accepted as a bearer token
+            saved = client.cookies.get("bib_ops")
+            client.cookies.delete("bib_ops")
+            assert (
+                client.get("/_ops", headers={"Authorization": f"Bearer {cookie}"}).status_code
+                == 401
+            )
+            client.cookies.set("bib_ops", saved)
             header = login.headers.get("set-cookie", "")
             assert "HttpOnly" in header
             assert "samesite=strict" in header.lower()

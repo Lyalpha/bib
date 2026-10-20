@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -11,6 +12,7 @@ UNIT = ROOT / "deploy" / "bib.user.service"
 HTTPD = ROOT / "deploy" / "httpd-bib.conf.example"
 HTACCESS = ROOT / "deploy" / "htaccess.example"
 RSYNC_EXCLUDE = ROOT / "deploy" / "rsync-exclude"
+NOTEBOOKS = sorted((ROOT / "notebooks").glob("*.ipynb"))
 
 SITE_SPECIFIC = (
     "warwick",
@@ -32,11 +34,22 @@ def test_deploy_script_is_valid_bash():
 
 def test_deploy_artifacts_are_site_agnostic():
     blob = "\n".join(
-        path.read_text().lower()
-        for path in (SCRIPT, UNIT, HTTPD, HTACCESS, RSYNC_EXCLUDE)
+        path.read_text().lower() for path in (SCRIPT, UNIT, HTTPD, HTACCESS, RSYNC_EXCLUDE)
     )
     for needle in SITE_SPECIFIC:
         assert needle not in blob, needle
+
+
+def test_notebooks_are_site_agnostic():
+    """Notebooks read the instance URL from BIB_API; no host is baked in."""
+    assert NOTEBOOKS, "no notebooks found"
+    for path in NOTEBOOKS:
+        notebook = json.loads(path.read_text())
+        # Cell sources only: embedded image outputs are base64 noise.
+        text = "\n".join("".join(cell["source"]) for cell in notebook["cells"]).lower()
+        assert 'os.environ.get("bib_api"' in text, f"{path.name} does not read BIB_API"
+        for needle in SITE_SPECIFIC:
+            assert needle not in text, f"{path.name}: {needle}"
 
 
 def test_user_unit_runs_gunicorn_on_loopback():

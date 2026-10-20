@@ -21,7 +21,9 @@ def classify_route(path: str, admin_path: str = "/_ops") -> str:
     return "other"
 
 
-def emit_request(method: str, path: str, status: int, duration_s: float, admin_path: str = "/_ops") -> None:
+def emit_request(
+    method: str, path: str, status: int, duration_s: float, admin_path: str = "/_ops"
+) -> None:
     if path.startswith("/static"):
         return
     metrics = _metrics()

@@ -1,4 +1,4 @@
-"""Dust law behaviour: identity at E(B-V)=0, known values, range clamping."""
+"""Dust law behaviour: identity at E(B-V)=0, known values, no extrapolation outside the window."""
 
 from __future__ import annotations
 
@@ -51,17 +51,44 @@ def test_uv_extinction_exceeds_optical():
         assert result.flux[0] < result.flux[1], f"{law}: UV should be dimmed more than V"
 
 
-def test_out_of_range_wavelengths_clamped():
-    """Far outside every law's window the factor is finite and equals the boundary."""
+def test_out_of_range_wavelengths_are_unextinguished():
+    """Outside every law's window no extrapolation happens: factor is exactly 1."""
     wl = np.array([10.0, 5.0e6])  # X-ray-ish and far-IR
     flux = np.array([1.0, 1.0])
     for law_key, law in DUST_LAWS.items():
         result = apply_dust(wl, flux, law_key, ebv=0.3)
-        assert np.all(np.isfinite(result.flux))
-        assert np.all(result.flux > 0)
+        np.testing.assert_array_equal(result.flux, flux)
+        assert not result.applied_mask.any()
         lo_a, hi_a = law.wavelength_range_a
-        boundary = apply_dust(np.array([lo_a * 1.0001, hi_a * 0.9999]), flux, law_key, ebv=0.3)
-        np.testing.assert_allclose(result.flux, boundary.flux, rtol=5e-3)
+        inside = apply_dust(np.array([lo_a * 1.0001, hi_a * 0.9999]), flux, law_key, ebv=0.3)
+        assert inside.applied_mask.all()
+        assert np.all(inside.flux < 1.0)
+
+
+def test_partial_window_only_touches_inside_pixels():
+    wl = np.array([500.0, 2000.0, 5500.0, 20000.0, 2.0e5])
+    flux = np.ones(wl.size)
+    result = apply_dust(wl, flux, "calzetti00", ebv=0.2)  # window 1200–21978 Å
+    assert result.applied_mask.tolist() == [False, True, True, True, False]
+    assert result.flux[0] == 1.0 and result.flux[-1] == 1.0
+    assert np.all(result.flux[1:4] < 1.0)
+
+
+def test_rv_outside_supported_range_raises():
+    for law in ("ccm89", "f99"):
+        assert DUST_LAWS[law].rv_range == (2.0, 6.0)
+        with pytest.raises(ValueError, match="R_V"):
+            apply_dust(np.array([5500.0]), np.array([1.0]), law, ebv=0.1, rv=1.5)
+        with pytest.raises(ValueError, match="R_V"):
+            apply_dust(np.array([5500.0]), np.array([1.0]), law, ebv=0.1, rv=6.5)
+    # boundary values are accepted
+    assert apply_dust(np.array([5500.0]), np.array([1.0]), "ccm89", ebv=0.1, rv=2.0).rv == 2.0
+    assert apply_dust(np.array([5500.0]), np.array([1.0]), "f99", ebv=0.1, rv=6.0).rv == 6.0
+
+
+def test_rv_rejected_even_when_ebv_is_zero():
+    with pytest.raises(ValueError):
+        apply_dust(np.array([5500.0]), np.array([1.0]), "ccm89", ebv=0.0, rv=9.0)
 
 
 def test_fixed_rv_laws_ignore_user_rv():

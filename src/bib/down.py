@@ -14,8 +14,8 @@ def is_bib_server_cmd(cmd: str) -> bool:
     """True for a ``bib serve`` / uvicorn factory process, not ``bib down``."""
     if "bib down" in cmd:
         return False
-    return "bib serve" in cmd or "bib.app:create_app" in cmd or (
-        "uvicorn" in cmd and "bib.app" in cmd
+    return (
+        "bib serve" in cmd or "bib.app:create_app" in cmd or ("uvicorn" in cmd and "bib.app" in cmd)
     )
 
 
@@ -55,10 +55,13 @@ def pids_holding_sockets(inodes: set[int], proc: Path = Path("/proc")) -> set[in
                 target = os.readlink(fd)
             except OSError:
                 continue
-            if target.startswith("socket:[") and target.endswith("]"):
-                if int(target[8:-1]) in inodes:
-                    found.add(int(entry.name))
-                    break
+            if (
+                target.startswith("socket:[")
+                and target.endswith("]")
+                and int(target[8:-1]) in inodes
+            ):
+                found.add(int(entry.name))
+                break
     return found
 
 

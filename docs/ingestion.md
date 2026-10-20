@@ -11,7 +11,7 @@ for whoever (re)loads the database. The README is the short version.
 ## Getting the data
 
 - [BPASS v2.2.1 release page](https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/)
-  — the primary release: population synthesis products and stellar models.
+  — the primary release: population synthesis products.
 - [BPASS v2.3 release page](https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/bpassv2p3/)
   — alpha-enhanced spectral synthesis extension.
 - [bpass.auckland.ac.nz](https://bpass.auckland.ac.nz) — project home.
@@ -144,7 +144,7 @@ lists are read from the database per request).
 ## Other manifests
 
 ```sh
-# curated "golden subset" (300 M☉ fiducial + extras + stellar models)
+# curated "golden subset" (300 M☉ fiducial + extras + v2.3 alpha grids)
 uv run bib ingest --source /path/to/bpass_downloads
 
 # your own YAML
@@ -176,25 +176,11 @@ populations:
     pop_types: [bin, sin]
     metallicities: [zem5, zem4, z001, z002, z003, z004, z006, z008, z010, z014, z020, z030, z040]
     products: [spectra, colours, ionizing, starmass, supernova, yields, mlratio, numbers]
-
-hrs:
-  - release: "2.2.1"
-    imf: imf135_100
-    pop_types: [bin]
-    metallicities: [z020]
-    diagrams: [TL]
-
-models:
-  - z: z020
-    kind: primary
-    select: { m1: [15], q: [0.6], logp: [0.6] }
-    curated: true
-    title: "15 Msun close binary"
 ```
 
 `golden.yaml` is the larger curated set: all 13 metallicities of
-`imf135_300` (single and binary), a few 300 M☉ IMF variants, the v2.3 alpha
-grids, HRD isocontours, and ~30 hand-picked stellar models.
+`imf135_300` (single and binary), a few 300 M☉ IMF variants and the v2.3 alpha
+grids.
 
 ## File formats understood
 
@@ -209,13 +195,17 @@ grids, HRD isocontours, and ~30 hand-picked stellar models.
 | yields | `yields-…` | 51 × 9 |
 | M/L | `mlratio-…` | 51 × 3 (leading `log(age)` header is skipped) |
 | star counts | `numbers-…` | 51 × 21 (10 spectral types × 2 luminosity bins) |
-| HRD isocontours | `hrs-…` | 3 diagrams × 3 classes × 51 ages × 100 × 100 |
-| stellar models | `sneplot-<z>-<M1>[-<q>-<logP>]`, `sneplot_2-…` | ≥ 16 columns, monotonic age |
 
 Malformed files raise a `ParseError` naming the file and the violated
 expectation; the age column of every per-age table is validated against the
 canonical 6.0–11.0 grid. A missing or unreadable optional product is a
 warning, not a failed ingest; a missing `spectra` file skips that population.
+
+Negative flux values in a `spectra` file (a known artefact of pre-v2.2.1
+releases) are clamped to zero. The count is printed as an ingest warning and
+persisted as `n_negative_clamped` on the population (visible in
+`GET /api/v1/populations` and `GET /api/v1/populations/{id}`), so a served
+population carries its own data-quality note; `0` means the file was clean.
 
 ## After ingesting
 

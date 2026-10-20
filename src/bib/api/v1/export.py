@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from bib.api.v1.pipeline import IGM_PARAM_PATTERN
 from bib.db.session import get_db
 from bib.export.build import build_export
 from bib.export.catalog import EXPORT_FORMATS, EXPORT_UNITS, PRODUCTS, product_options
@@ -41,8 +42,13 @@ def export_data(
     mass: float = Query(1.0, gt=0, description="Formed mass in Msun; used only for physical units"),
     dust_law: str | None = None,
     ebv: float = Query(0.0, ge=0.0, le=5.0),
-    rv: float | None = Query(None, gt=1.0, lt=10.0),
+    rv: float | None = Query(None, ge=2.0, le=6.0, description="R_V for CCM89/F99 (2.0–6.0)"),
     redshift: float = Query(0.0, ge=0.0, le=zlib.MAX_REDSHIFT),
+    igm: str = Query(
+        "none",
+        pattern=IGM_PARAM_PATTERN,
+        description="IGM attenuation (SED / photometry, observer frame, redshift > 0)",
+    ),
     filters: str | None = Query(None, description="Comma-separated filter names (photometry)"),
     format: str = Query("csv", pattern="^(json|csv|ecsv|ascii)$"),
     db: Session = Depends(get_db),
@@ -75,6 +81,7 @@ def export_data(
         ebv=ebv,
         rv=rv,
         redshift=redshift,
+        igm=igm,
         filters=filters,
         fmt=format,
     )

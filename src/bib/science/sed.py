@@ -93,7 +93,9 @@ def make_display_edges(wavelength: np.ndarray, target_points: int = 4000) -> np.
     return edges
 
 
-def rebin_flux(wavelength: np.ndarray, flux: np.ndarray, edges: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def rebin_flux(
+    wavelength: np.ndarray, flux: np.ndarray, edges: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Average flux density within display bins (flux-density preserving).
 
     Returns (bin_centres, binned_flux). Empty bins are filled by linear

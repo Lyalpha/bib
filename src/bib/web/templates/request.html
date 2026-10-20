@@ -53,7 +53,7 @@
     </div>
 
     <div class="control-group" id="grp-dust">
-      <label>Dust extinction <span class="hint" title="Extinguishes the SED: the spectrum is multiplied by this curve at the chosen E(B−V). A foreground screen, not attenuation, and the removed light is not reprocessed.">?</span></label>
+      <label>Dust extinction <span class="hint" title="Extinguishes the SED: the spectrum is multiplied by this curve at the chosen E(B−V). A foreground screen, not attenuation, and the removed light is not reprocessed. Applied only inside the law's published wavelength window — never extrapolated; photometry rows flag passbands outside it.">?</span></label>
       <select id="sel-dust">
         <option value="">No extinction</option>
       </select>
@@ -80,6 +80,14 @@
         <output id="out-redshift">0.00</output>
       </div>
       <span class="small muted" id="dl-note">Rest frame · photometry at 10 pc</span>
+    </div>
+
+    <div class="control-group" id="grp-igm" hidden>
+      <label>IGM attenuation <span class="hint" title="Multiplies the observer-frame spectrum by the mean Lyman-series + Lyman-continuum transmission of the intergalactic medium (blueward of Lyα × (1+z)). A sightline average without a damping wing. Only acts when z > 0; photometry rows state whether it was applied.">?</span></label>
+      <select id="sel-igm">
+        <option value="none">No IGM attenuation</option>
+      </select>
+      <span class="small muted" id="igm-note" hidden>Only acts when z &gt; 0</span>
     </div>
 
     <div class="control-group" id="grp-filters" hidden>
@@ -150,5 +158,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="/static/js/request.js?v=10"></script>
+<script type="module" src="/static/js/request.js?v=11"></script>
 {% endblock %}

@@ -31,13 +31,6 @@ async def sed_explorer_redirect():
     return RedirectResponse("/ssp", status_code=301)
 
 
-@router.get("/star")
-@router.get("/hr")
-async def star_explorer_parked():
-    """Star Explorer is parked until it is finished. The implementation is on the star-explorer branch."""
-    return RedirectResponse("/", status_code=302)
-
-
 @router.get("/request")
 async def request_data_page(request: Request):
     return templates.TemplateResponse(request, "request.html")

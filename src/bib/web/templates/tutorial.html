@@ -97,8 +97,14 @@
   (starbursts), with R<sub>V</sub> where the curve allows it.
   Calzetti et al. published their curve as an attenuation law; here it is used the same
   way as the others, as a screen.
-  Outside a curve's validated wavelength range the value is held at its boundary and
-  the affected region is flagged, so you can see when you are extrapolating.
+  Outside a curve's published wavelength range nothing is applied — the spectrum is left
+  as it is rather than extrapolated — and the region is shaded, so you can see where the
+  extinction stops. Photometry through such passbands is flagged in the table.
+  At <em>z</em> &gt; 0 you can also switch on <strong>IGM attenuation</strong>: the
+  observer-frame spectrum is multiplied by the mean transmission of intervening neutral
+  hydrogen bluewards of Lyα(1+z) (Inoue et al. 2014 or Madau 1995) — a sightline
+  average, without a damping wing. Every magnitude states whether it is
+  dust-extinguished, IGM-attenuated, both or unattenuated.
 </p>
 
 <h2>3 · Using the SSP Explorer</h2>
@@ -130,12 +136,10 @@
 <div class="card">
   <h3>A note on scientific honesty</h3>
   <p class="small">
-    Animation frames <em>between</em> BPASS grid ages or model timesteps are linear
-    interpolations added purely for visual smoothness — they are not model output. Every
-    number you can read out, tabulate or download (photometry tables, CSV/JSON exports)
-    is evaluated at true grid points only. Model files also do not tabulate central
-    abundances, so evolutionary events are detected heuristically from core masses, surface
-    composition and track morphology; event markers are labelled accordingly.
+    Animation frames <em>between</em> BPASS grid ages are linear interpolations added
+    purely for visual smoothness — they are not model output. Every number you can read
+    out, tabulate or download (photometry tables, CSV/JSON exports) is evaluated at true
+    grid points only.
     {% if has_synthetic %}And while the <span class="badge warn">synthetic demo</span> banner
     is up, the loaded data are toy shapes for exploring the interface — ingest real BPASS
     products before drawing any conclusions.{% endif %}

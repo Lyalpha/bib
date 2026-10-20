@@ -60,7 +60,7 @@ class ImfInfo:
             ln10 = float(np.log(10.0))
             payload["mass"] = [float(x) for x in mass]
             payload["xi"] = [float(x) for x in xi]
-            payload["dndm"] = [float(y / (m * ln10)) for m, y in zip(mass, xi)]
+            payload["dndm"] = [float(y / (m * ln10)) for m, y in zip(mass, xi, strict=True)]
         return payload
 
     def xi(self, mass: np.ndarray) -> np.ndarray:
@@ -120,10 +120,10 @@ def _chabrier_xi(mass: np.ndarray, alpha: float) -> np.ndarray:
     """Chabrier (2003) single-star ξ(log M), stitched to M^{-α} above 1 M☉."""
     log_m = np.log10(mass)
     log_mc = np.log10(_CHABRIER_MC)
-    ln_at_break = np.exp(-(0.0 - log_mc) ** 2 / (2.0 * _CHABRIER_SIGMA**2))
+    ln_at_break = np.exp(-((0.0 - log_mc) ** 2) / (2.0 * _CHABRIER_SIGMA**2))
     out = np.empty_like(mass)
     low = mass < _CHABRIER_BREAK
-    out[low] = np.exp(-(log_m[low] - log_mc) ** 2 / (2.0 * _CHABRIER_SIGMA**2)) / ln_at_break
+    out[low] = np.exp(-((log_m[low] - log_mc) ** 2) / (2.0 * _CHABRIER_SIGMA**2)) / ln_at_break
     out[~low] = mass[~low] ** (-alpha)
     return out
 

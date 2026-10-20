@@ -15,7 +15,9 @@ from bib.db import models as m
 from bib.export.catalog import PRODUCTS, FieldSpec, ProductSpec, physical_field_name
 from bib.export.table import Column, ExportTable, formed_mass, mass_scale
 from bib.science import redshift as zlib
+from bib.science.dust import DUST_LAWS
 from bib.science.filters import get_curves
+from bib.science.igm import IGM_MODELS
 from bib.science.imf import describe_imf
 from bib.science.sed import BPASS_LOG_AGES
 
@@ -93,6 +95,7 @@ def _query_comments(
     ebv: float,
     rv: float | None,
     redshift: float,
+    igm: str | None,
     filters: str | None,
 ) -> tuple[list[str], dict[str, Any]]:
     pop = pops[0]
@@ -104,16 +107,37 @@ def _query_comments(
         else f"log10(age/yr) = {float(log_age):.1f}  ({10 ** float(log_age):.3g} yr)"
     )
     z_note = (
-        f"all loaded metallicities ({len(pops)}): "
-        + ", ".join(p.z_label for p in pops)
+        f"all loaded metallicities ({len(pops)}): " + ", ".join(p.z_label for p in pops)
         if all_z
         else f"{pop.z_label} (Z = {pop.z_value})"
     )
     dust_note = "none"
+    rv_eff: float | None = None
+    dust_window: list[float] | None = None
     if dust_law and ebv > 0:
-        dust_note = f"{dust_law}, E(B-V) = {ebv:g}"
-        if rv is not None:
-            dust_note += f", R_V = {rv:g}"
+        law = DUST_LAWS.get(dust_law)
+        if law is None:
+            raise HTTPException(422, f"unknown dust law '{dust_law}'")
+        try:
+            rv_eff = law.resolve_rv(rv)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        dust_window = [round(v, 1) for v in law.wavelength_range_a]
+        dust_note = (
+            f"{law.label} ({dust_law}), E(B-V) = {ebv:g}, R_V = {rv_eff:g}"
+            + (" (fixed by the law)" if law.fixed_rv is not None else "")
+            + f"; valid {dust_window[0]:g}–{dust_window[1]:g} Å rest frame, not extrapolated"
+        )
+    igm_key = None if (not igm or igm == "none") else igm
+    if igm_key is not None and igm_key not in IGM_MODELS:
+        raise HTTPException(422, f"unknown IGM model '{igm_key}'")
+    uses_igm = spec.uses_igm and igm_key is not None and redshift > 0
+    if not spec.uses_igm or redshift <= 0:
+        igm_note = "none (rest frame)" if redshift <= 0 else "not applicable to this product"
+    elif igm_key is None:
+        igm_note = "none — photometry blueward of Lyα(1+z) is NOT IGM-attenuated"
+    else:
+        igm_note = f"{IGM_MODELS[igm_key].label} ({igm_key}), mean transmission, observer frame"
     comments = [
         f"bib {__version__}",
         f"product: {spec.label} ({spec.key})",
@@ -133,6 +157,8 @@ def _query_comments(
             if redshift > 0
             else " (rest frame / 10 pc absolute for photometry)"
         ),
+        f"igm: {igm_note}",
+        "pipeline: mass -> dust (rest frame) -> redshift -> igm (observer frame)",
     ]
     if filters:
         comments.append(f"filters: {filters}")
@@ -141,7 +167,9 @@ def _query_comments(
         "Stanway & Eldridge (2018); include the BPASS acknowledgement."
     )
     if any(p.is_synthetic for p in pops):
-        comments.append("WARNING: one or more matching populations are synthetic demo data, not BPASS.")
+        comments.append(
+            "WARNING: one or more matching populations are synthetic demo data, not BPASS."
+        )
     meta = {
         "bib_version": __version__,
         "product": spec.key,
@@ -154,10 +182,13 @@ def _query_comments(
         "metallicities": [p.z_label for p in pops],
         "log_age": None if all_ages else float(log_age),
         "all_ages": all_ages,
-        "dust_law": dust_law or None,
+        "dust_law": dust_law if dust_law and ebv > 0 else None,
         "ebv": ebv if dust_law and ebv > 0 else 0.0,
-        "rv": rv,
+        "rv": rv_eff,
+        "dust_valid_range_a": dust_window,
         "redshift": redshift,
+        "igm": igm_key if uses_igm else None,
+        "uses_igm": uses_igm,
         "cosmology": zlib.COSMOLOGY_LABEL if redshift > 0 else None,
         "luminosity_distance_mpc": zlib.luminosity_distance_mpc(redshift) if redshift > 0 else None,
         "synthetic": any(p.is_synthetic for p in pops),
@@ -188,7 +219,9 @@ def _filename(
     return f"bib_{spec.key}_{pops[0].imf}_{pops[0].pop_type}_{zbit}_{agebit}_{units}.{ext}"
 
 
-def _convert_field(field: FieldSpec, values: np.ndarray, units: str, scale: float, bin_width: np.ndarray | None) -> np.ndarray:
+def _convert_field(
+    field: FieldSpec, values: np.ndarray, units: str, scale: float, bin_width: np.ndarray | None
+) -> np.ndarray:
     raw = np.asarray(values, dtype=float)
     if units == "native" or field.kind in {"intensive", "colour"}:
         return raw
@@ -220,9 +253,7 @@ def _timeseries_rows(
 
     model, _fields = _TIMESERIES_TABLES[table_key]
     rows = db.scalars(
-        select(model)
-        .where(model.population_id == population.id)
-        .order_by(model.age_index)
+        select(model).where(model.population_id == population.id).order_by(model.age_index)
     ).all()
     if not rows:
         return []
@@ -230,7 +261,9 @@ def _timeseries_rows(
     return [r for r in rows if r.age_index in wanted]
 
 
-def _identity_columns(pops: list[m.Population], ages: list[tuple[m.Population, int, float]]) -> list[Column]:
+def _identity_columns(
+    pops: list[m.Population], ages: list[tuple[m.Population, int, float]]
+) -> list[Column]:
     cols = []
     if len(pops) > 1:
         cols.append(
@@ -263,7 +296,7 @@ def _identity_columns(pops: list[m.Population], ages: list[tuple[m.Population, i
             "age_yr",
             "yr",
             "Age in years, 10^log_age",
-            np.array([10.0 ** a for _p, _i, a in ages], dtype=float),
+            np.array([10.0**a for _p, _i, a in ages], dtype=float),
         )
     )
     return cols
@@ -300,7 +333,9 @@ def _build_timeseries(
         if field.name == "bin_width_yr" and units == "physical" and spec.key == "sn_rates":
             continue
         values = _convert_field(field, store[field.name], units, scale, bin_width)
-        name = prefix + (physical_field_name(field, spec.key) if units == "physical" else field.name)
+        name = prefix + (
+            physical_field_name(field, spec.key) if units == "physical" else field.name
+        )
         unit = field.unit_physical if units == "physical" else field.unit_native
         desc = field.description
         if units == "physical" and field.kind == "log":
@@ -321,28 +356,33 @@ def _build_sed(
     ebv: float,
     rv: float | None,
     redshift: float,
+    igm: str | None,
 ) -> list[Column]:
-    from bib.api.v1.populations import _apply_transforms, _load_sed_arrays
+    from bib.api.v1.pipeline import run_pipeline
+    from bib.api.v1.populations import _load_sed_arrays
 
     pop = pops[0]
     mass_used = formed_mass(units, mass)
     wavelength = None
     flux_by_age: list[tuple[float, np.ndarray]] = []
     dust_info = None
+    igm_info = None
     for idx in age_indices:
         wl, flux, sed = _load_sed_arrays(db, pop, idx, "native")
-        flux, dust_info = _apply_transforms(wl, flux, mass_used, dust_law, ebv, rv)
-        if redshift > 0:
-            wl, flux = zlib.observe(wl, flux, redshift)
+        pipe = run_pipeline(
+            wl, flux, mass=mass_used, dust_law=dust_law, ebv=ebv, rv=rv, z=redshift, igm=igm
+        )
+        dust_info, igm_info = pipe.dust_info, pipe.igm_info
         if wavelength is None:
-            wavelength = wl
-        flux_by_age.append((float(sed.log_age), flux))
+            wavelength = pipe.wl_obs
+        flux_by_age.append((float(sed.log_age), pipe.flux_obs))
     assert wavelength is not None
     if redshift > 0:
         flux_unit = "erg s^-1 cm^-2 Å^-1"
         flux_desc = (
             f"Observer-frame f_λ at D_L for z = {redshift:g} "
             f"({zlib.COSMOLOGY_LABEL}); extinction applied in the rest frame"
+            + (f"; IGM: {igm_info['label']}" if igm_info else "; no IGM attenuation")
         )
         wl_desc = "Observer-frame wavelength (λ_rest × (1+z))"
         wl_name = "wavelength_angstrom_observed"
@@ -365,7 +405,11 @@ def _build_sed(
                 )
             )
     if dust_info:
-        cols[0].description += f"; dust {dust_info['law']} E(B-V)={dust_info['ebv']:g}"
+        lo, hi = dust_info["applied_range_a"]
+        cols[0].description += (
+            f"; dust {dust_info['law']} E(B-V)={dust_info['ebv']:g} R_V={dust_info['rv']:g} "
+            f"applied for {lo:.0f}–{hi:.0f} Å rest only"
+        )
     return cols
 
 
@@ -379,9 +423,11 @@ def _build_photometry(
     ebv: float,
     rv: float | None,
     redshift: float,
+    igm: str | None,
     filters: str | None,
 ) -> list[Column]:
-    from bib.api.v1.photometry import _native_sed, _observe, _photometry_payload, _transform
+    from bib.api.v1.photometry import _native_sed, _photometry_payload
+    from bib.api.v1.pipeline import run_pipeline
 
     pop = pops[0]
     mass_used = formed_mass(units, mass)
@@ -393,10 +439,19 @@ def _build_photometry(
     rows: list[dict] = []
     for idx in age_indices:
         wavelength, flux, sed = _native_sed(db, pop.id, idx)
-        flux, _dust = _transform(wavelength, flux, mass_used, dust_law, ebv, rv)
-        wl_obs, flam = _observe(wavelength, flux, redshift)
-        for entry in _photometry_payload(wl_obs, flam, curves, redshift):
+        pipe = run_pipeline(
+            wavelength,
+            flux,
+            mass=mass_used,
+            dust_law=dust_law,
+            ebv=ebv,
+            rv=rv,
+            z=redshift,
+            igm=igm,
+        )
+        for entry in _photometry_payload(pipe, curves):
             rows.append({**entry, "log_age": float(sed.log_age)})
+
     def col(name, unit, desc, key, datatype="float64"):
         values = [r.get(key) for r in rows]
         if datatype == "string":
@@ -428,6 +483,29 @@ def _build_photometry(
                 "ab_mag",
             ),
             col("coverage", "fraction", "Filter transmission overlapping the SED", "coverage"),
+            col(
+                "dust_status",
+                "",
+                "none | applied | partial | not_applied — extinction inside this passband "
+                "(rest-frame support vs the law's validity window)",
+                "dust_status",
+                "string",
+            ),
+            col(
+                "igm_status",
+                "",
+                "none | applied | not_applied — IGM attenuation inside this passband "
+                "(observed support vs Lyα(1+z))",
+                "igm_status",
+                "string",
+            ),
+            col(
+                "attenuation_label",
+                "",
+                "dust-extinguished | IGM-attenuated | dust-extinguished, IGM-attenuated | unattenuated",
+                "attenuation_label",
+                "string",
+            ),
         ]
     )
     return out
@@ -453,6 +531,7 @@ def build_export(
     redshift: float,
     filters: str | None,
     fmt: str,
+    igm: str | None = None,
 ) -> ExportTable:
     spec = PRODUCTS.get(product)
     if spec is None:
@@ -483,15 +562,14 @@ def build_export(
         ebv=ebv,
         rv=rv,
         redshift=redshift,
+        igm=igm,
         filters=filters,
     )
     if spec.key == "sed":
-        columns = _build_sed(
-            db, pops, age_indices, units, mass, dust_law, ebv, rv, redshift
-        )
+        columns = _build_sed(db, pops, age_indices, units, mass, dust_law, ebv, rv, redshift, igm)
     elif spec.key == "photometry":
         columns = _build_photometry(
-            db, pops, age_indices, units, mass, dust_law, ebv, rv, redshift, filters
+            db, pops, age_indices, units, mass, dust_law, ebv, rv, redshift, igm, filters
         )
     elif spec.bundle:
         columns = _identity_columns(
@@ -511,7 +589,9 @@ def build_export(
                 continue
             columns.extend(extra)
         if missing:
-            comments.append("missing products (not loaded for this population): " + ", ".join(missing))
+            comments.append(
+                "missing products (not loaded for this population): " + ", ".join(missing)
+            )
             meta["missing_products"] = missing
     else:
         columns = _build_timeseries(db, spec, pops, age_indices, units, mass)
@@ -519,9 +599,7 @@ def build_export(
     title = f"bib {spec.label}"
     return ExportTable(
         title=title,
-        filename=_filename(
-            spec, pops, units=units, log_age=log_age, all_ages=all_ages, fmt=fmt
-        ),
+        filename=_filename(spec, pops, units=units, log_age=log_age, all_ages=all_ages, fmt=fmt),
         comments=comments,
         columns=columns,
         meta=meta,

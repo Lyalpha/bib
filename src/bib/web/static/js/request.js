@@ -152,6 +152,8 @@ function syncVisibility() {
   $("sel-z").disabled = $("chk-all-z").checked;
   $("grp-dust").hidden = !spec?.uses_dust;
   $("grp-redshift").hidden = !spec?.uses_redshift;
+  $("grp-igm").hidden = !spec?.uses_igm;
+  $("igm-note").hidden = !spec?.uses_igm || zFromSlider($("sl-redshift").value) > 0;
   $("grp-filters").hidden = !spec?.uses_filters;
   $("grp-mass").hidden = !physical || spec?.uses_mass === false;
   $("age-row").hidden = $("chk-all-ages").checked;
@@ -192,6 +194,9 @@ function queryParams() {
     if (law && law.fixed_rv == null) params.rv = $("sl-rv").value;
   }
   if (spec?.uses_redshift) params.redshift = String(zFromSlider($("sl-redshift").value));
+  if (spec?.uses_igm && $("sel-igm").value !== "none" && zFromSlider($("sl-redshift").value) > 0) {
+    params.igm = $("sel-igm").value;
+  }
   if (spec?.uses_filters && $("sel-filters").value) params.filters = $("sel-filters").value;
   if (units() === "physical" && spec?.uses_mass !== false) params.mass = String(massMsun());
   return params;
@@ -230,6 +235,12 @@ function fillMeta() {
     rows.push(["Extinction", $("sel-dust").value ? `${$("sel-dust").value}, E(B−V)=${$("sl-ebv").value}` : "none"]);
   }
   if (spec?.uses_redshift) rows.push(["Redshift", zFromSlider($("sl-redshift").value).toFixed(2)]);
+  if (spec?.uses_igm) {
+    const z = zFromSlider($("sl-redshift").value);
+    const model = $("sel-igm").value;
+    const label = (state.meta.igm_models || []).find((m) => m.key === model)?.label || model;
+    rows.push(["IGM", z > 0 && model !== "none" ? label : z > 0 ? "none (not attenuated)" : "n/a at z = 0"]);
+  }
   $("request-meta").innerHTML = rows
     .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)
     .join("");
@@ -280,6 +291,9 @@ function columnHints() {
     add("lambda_eff", "Å", "Effective wavelength");
     add("ab_mag", "mag (AB)", zFromSlider($("sl-redshift").value) > 0 ? "Apparent AB magnitude" : "Absolute AB magnitude at 10 pc");
     add("coverage", "fraction", "Fraction of the filter transmission that overlaps the SED");
+    add("dust_status", "", "none | applied | partial | not_applied — extinction inside this passband (rest-frame support vs the law's validity window)");
+    add("igm_status", "", "none | applied | not_applied — IGM attenuation inside this passband (observed support vs Lyα(1+z))");
+    add("attenuation_label", "", "dust-extinguished · IGM-attenuated · both · unattenuated");
   } else if (spec?.bundle) {
     group("Age");
     add("log_age", "dex (yr)", "log₁₀(age / yr) on the BPASS 0.1 dex grid");
@@ -368,6 +382,14 @@ async function init() {
       opt.textContent = law.label;
       $("sel-dust").appendChild(opt);
     }
+    for (const model of meta.igm_models || []) {
+      const opt = document.createElement("option");
+      opt.value = model.key;
+      opt.textContent = model.label;
+      opt.title = model.note;
+      $("sel-igm").appendChild(opt);
+    }
+    if (meta.igm_default) $("sel-igm").value = meta.igm_default;
     const groups = [...new Set(filters.map((f) => f.group).filter(Boolean))];
     for (const group of groups) {
       const opt = document.createElement("option");
@@ -437,6 +459,7 @@ $("sl-redshift").addEventListener("input", () => {
   syncRangeFill($("sl-redshift"));
   refresh();
 });
+$("sel-igm").addEventListener("change", refresh);
 $("sel-filters").addEventListener("change", refresh);
 $("seg-units").addEventListener("change", refresh);
 function updateMass() {

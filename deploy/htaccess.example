@@ -10,6 +10,12 @@
 # HTML, not FastAPI's JSON 404. Do not set DirectoryIndex here: it needs
 # AllowOverride Indexes, which [P] hosts often do not grant.
 
+# Tell the app the original scheme so it marks cookies Secure and builds
+# https:// URLs (uvicorn trusts X-Forwarded-* from 127.0.0.1 by default).
+# Requires mod_headers.
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-Port "443"
+
 RewriteEngine On
 RewriteBase /
 RewriteRule ^index\.html$ http://127.0.0.1:8001/ [P,L]

@@ -30,8 +30,15 @@ def init_db() -> None:
 
 @app.command()
 def ingest(
-    source: Path = typer.Option(..., "--source", "-s", help="Directory containing BPASS data files."),
-    manifest: Path = typer.Option(None, "--manifest", "-m", help="Golden-subset manifest YAML (defaults to the bundled golden.yaml)."),
+    source: Path = typer.Option(
+        ..., "--source", "-s", help="Directory containing BPASS data files."
+    ),
+    manifest: Path = typer.Option(
+        None,
+        "--manifest",
+        "-m",
+        help="Golden-subset manifest YAML (defaults to the bundled golden.yaml).",
+    ),
     replace: bool = typer.Option(False, "--replace", help="Re-ingest items that already exist."),
 ) -> None:
     """Ingest real BPASS data products listed in a manifest."""
@@ -135,7 +142,9 @@ def sentry_ping() -> None:
     try:
         import sentry_sdk
     except ImportError:
-        console.print("[red]sentry-sdk is not installed[/red] — run [bold]uv sync --extra ops[/bold]")
+        console.print(
+            "[red]sentry-sdk is not installed[/red] — run [bold]uv sync --extra ops[/bold]"
+        )
         raise typer.Exit(1) from None
     client = sentry_sdk.get_client()
     if not client.is_active():
@@ -147,7 +156,9 @@ def sentry_ping() -> None:
         event_id = sentry_sdk.capture_exception()
     sentry_sdk.flush(timeout=20)  # returns None on success
     if event_id:
-        console.print(f"[green]Sent test event[/green] {event_id} — check the Sentry Issues stream.")
+        console.print(
+            f"[green]Sent test event[/green] {event_id} — check the Sentry Issues stream."
+        )
     else:
         console.print("[red]SDK did not accept the event[/red]")
         raise typer.Exit(1)

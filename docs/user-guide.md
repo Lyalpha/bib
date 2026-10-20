@@ -23,12 +23,20 @@ the operator's view of the two explorers.
    quantities scale linearly; extinction does not affect the timeseries panels.
 5. **Dust extinction** — curve + E(B−V) (+ R_V where the curve allows). The SED
    is multiplied by \(10^{-0.4 A_\lambda}\): a foreground screen, not a mixed
-   star–dust attenuation, and the removed light is not re-emitted. Regions where
-   the curve is extrapolated (clamped at its boundary) are shaded on the SED.
+   star–dust attenuation, and the removed light is not re-emitted. Each curve is
+   applied only inside its published wavelength window; the regions outside it,
+   where nothing is applied, are shaded on the SED and photometry through such
+   passbands is flagged.
 6. **Redshift** — stretches \(\lambda\) by \((1+z)\) and dims the plotted flux by
    \((10\,\mathrm{pc}/D_L)^2/(1+z)\) (flat ΛCDM). Photometry switches from
    absolute \(M_\mathrm{AB}\) at \(D_L=10\,\mathrm{pc}\) to apparent \(m_\mathrm{AB}\).
-   Timeseries panels stay in the rest frame.
+   Timeseries panels stay in the rest frame. **IGM attenuation** (on by default,
+   Inoue et al. 2014 or Madau 1995) multiplies the observer-frame spectrum by
+   the mean intergalactic transmission bluewards of Lyα(1+z); the affected
+   region is shaded. The photometry table's *Applied* column states whether
+   each magnitude is dust-extinguished, IGM-attenuated, both or unattenuated,
+   and flags passbands where a requested effect could not be applied (crossed
+   marker on the plot).
 7. **Pin SSP on plots** — overlays this population on every visible plot (frozen SED
    slice plus that SSP's full history on the timeseries). A management chip
    lets you remove it. Pinned SSPs survive selector changes. With one or more

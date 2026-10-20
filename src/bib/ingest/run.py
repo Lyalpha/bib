@@ -30,9 +30,7 @@ from sqlalchemy.orm import Session
 from bib.db import models as m
 from bib.db.session import session_scope
 from bib.ingest import parsers
-from bib.ingest.events import detect_events
-from bib.ingest.parsers import ALPHA_VALUES, Z_VALUES, ModelName, ParseError, TrackData
-from bib.ingest.tarpick import iter_models_in_dir, iter_selected_models, make_selector
+from bib.ingest.parsers import ALPHA_VALUES, Z_VALUES, ParseError
 from bib.science import sed as sedlib
 
 DEFAULT_MANIFEST = Path(__file__).resolve().parent / "golden.yaml"
@@ -48,23 +46,80 @@ _PRODUCT_PARSERS = {
 }
 
 _COLOURS_FIELDS = [
-    "v_minus_i", "mag_u", "mag_b", "mag_v", "mag_r", "mag_i", "mag_j", "mag_h", "mag_k",
-    "sdss_u", "sdss_g", "sdss_r", "sdss_i", "sdss_z",
-    "f300w", "f336w", "f435w", "f450w", "f555w", "f606w", "f814w",
+    "v_minus_i",
+    "mag_u",
+    "mag_b",
+    "mag_v",
+    "mag_r",
+    "mag_i",
+    "mag_j",
+    "mag_h",
+    "mag_k",
+    "sdss_u",
+    "sdss_g",
+    "sdss_r",
+    "sdss_i",
+    "sdss_z",
+    "f300w",
+    "f336w",
+    "f435w",
+    "f450w",
+    "f555w",
+    "f606w",
+    "f814w",
 ]
 _IONIZING_FIELDS = ["log_nion", "log_l_halpha", "log_l_fuv", "log_l_nuv"]
 _SN_FIELDS = [
-    "n_ia", "n_iip", "n_ii_other", "n_ib", "n_ic", "n_grb", "n_pisn", "n_low_mass",
-    "e_ia", "e_iip", "e_ii_other", "e_ib", "e_ic", "e_grb", "e_pisn", "e_low_mass",
+    "n_ia",
+    "n_iip",
+    "n_ii_other",
+    "n_ib",
+    "n_ic",
+    "n_grb",
+    "n_pisn",
+    "n_low_mass",
+    "e_ia",
+    "e_iip",
+    "e_ii_other",
+    "e_ib",
+    "e_ic",
+    "e_grb",
+    "e_pisn",
+    "e_low_mass",
     "bin_width_yr",
 ]
-_YIELDS_FIELDS = ["wind_h", "wind_he", "wind_z", "wind_energy", "sn_energy", "sn_h", "sn_he", "sn_z"]
+_YIELDS_FIELDS = [
+    "wind_h",
+    "wind_he",
+    "wind_z",
+    "wind_energy",
+    "sn_energy",
+    "sn_h",
+    "sn_he",
+    "sn_z",
+]
 _MLRATIO_FIELDS = ["ml_k", "ml_v"]
 _STAR_COUNT_FIELDS = [
-    "n_o_hi", "n_of_hi", "n_b_hi", "n_a_hi", "n_ysg_hi",
-    "n_k_hi", "n_m_hi", "n_wnh_hi", "n_wn_hi", "n_wc_hi",
-    "n_o_lo", "n_of_lo", "n_b_lo", "n_a_lo", "n_ysg_lo",
-    "n_k_lo", "n_m_lo", "n_wnh_lo", "n_wn_lo", "n_wc_lo",
+    "n_o_hi",
+    "n_of_hi",
+    "n_b_hi",
+    "n_a_hi",
+    "n_ysg_hi",
+    "n_k_hi",
+    "n_m_hi",
+    "n_wnh_hi",
+    "n_wn_hi",
+    "n_wc_hi",
+    "n_o_lo",
+    "n_of_lo",
+    "n_b_lo",
+    "n_a_lo",
+    "n_ysg_lo",
+    "n_k_lo",
+    "n_m_lo",
+    "n_wnh_lo",
+    "n_wn_lo",
+    "n_wc_lo",
 ]
 _PRODUCT_MODELS = {
     "colours": m.Colours,
@@ -76,21 +131,11 @@ _PRODUCT_MODELS = {
     "numbers": m.StarCounts,
 }
 
-_STEP_FIELDS = [
-    "age_yr", "log_r1", "log_t1", "log_l1", "m1", "he_core", "co_core", "one_core",
-    "x_surf", "y_surf", "c_surf", "n_surf", "o_surf", "ne_surf",
-    "dm1w", "dm2w", "dm1a", "dm2a", "dm1r", "dm2r",
-    "period_yr", "log_sep", "m2", "log_r2", "log_t2", "log_l2",
-]
-
 
 @dataclass
 class IngestStats:
     populations: int = 0
     skipped_populations: int = 0
-    hrd_files: int = 0
-    models: int = 0
-    skipped_models: int = 0
     warnings: list[str] = field(default_factory=list)
 
     def warn(self, console: Console, message: str) -> None:
@@ -278,8 +323,6 @@ def _archive_needles(spec: dict) -> set[str]:
         needles.add(pop_spec["imf"])
         if pop_spec.get("alphas"):
             has_alpha = True
-    for hrs_spec in spec.get("hrs", []):
-        needles.add(hrs_spec["imf"])
     # Official v2.3 packs are named bpass_v2.3.a+00.tar.gz, not imf*.
     if has_alpha:
         needles.add("v2.3")
@@ -297,16 +340,7 @@ def _needed_product_names(spec: dict) -> list[str]:
                 for alpha in alphas:
                     for product in products:
                         names.extend(_product_filenames(product, opt, imf, z, alpha))
-    for hrs_spec in spec.get("hrs", []):
-        imf = hrs_spec["imf"]
-        for opt in hrs_spec.get("pop_types", ["bin"]):
-            for z in hrs_spec.get("metallicities", []):
-                names.append(f"hrs-{opt}-{imf}.{z}.dat")
     return names
-
-
-def _nan_to_none(value: float) -> float | None:
-    return None if value is None or (isinstance(value, float) and np.isnan(value)) else value
 
 
 # ---------------------------------------------------------------------------
@@ -427,7 +461,7 @@ def _ingest_population(
         source_file=index.provenance(spectra_path),
         sha256=_sha256(spectra_path),
         is_synthetic=False,
-        extra={"products": []},
+        extra={"products": [], "n_negative_clamped": int(spectra.n_negative_clamped)},
     )
     session.add(population)
     session.flush()
@@ -464,7 +498,7 @@ def _ingest_population(
         ):
             loaded_products.append(product)
 
-    population.extra = {"products": loaded_products}
+    population.extra = {**(population.extra or {}), "products": loaded_products}
     session.flush()
     stats.populations += 1
 
@@ -546,9 +580,7 @@ def _fill_missing_products(
     return added
 
 
-def _rows_from_table(
-    population_id: int, table: np.ndarray, fields: list[str]
-) -> list[dict]:
+def _rows_from_table(population_id: int, table: np.ndarray, fields: list[str]) -> list[dict]:
     rows = []
     for age_index in range(table.shape[0]):
         row = {
@@ -568,7 +600,9 @@ def _insert_product_rows(
     if product == "colours":
         session.execute(insert(m.Colours), _rows_from_table(population_id, table, _COLOURS_FIELDS))
     elif product == "ionizing":
-        session.execute(insert(m.Ionizing), _rows_from_table(population_id, table, _IONIZING_FIELDS))
+        session.execute(
+            insert(m.Ionizing), _rows_from_table(population_id, table, _IONIZING_FIELDS)
+        )
     elif product == "starmass":
         rows = []
         has_remnants = table.shape[1] == 3
@@ -590,215 +624,9 @@ def _insert_product_rows(
     elif product == "mlratio":
         session.execute(insert(m.MLRatio), _rows_from_table(population_id, table, _MLRATIO_FIELDS))
     elif product == "numbers":
-        session.execute(insert(m.StarCounts), _rows_from_table(population_id, table, _STAR_COUNT_FIELDS))
-
-
-# ---------------------------------------------------------------------------
-# HRD isocontours
-# ---------------------------------------------------------------------------
-
-
-def _ingest_hrs(
-    session: Session,
-    console: Console,
-    stats: IngestStats,
-    index: FileIndex,
-    release: m.Release,
-    imf: str,
-    z: str,
-    opt: str,
-    diagrams: list[str],
-    replace: bool,
-) -> None:
-    tag = f"hrs {release.version}/{imf}/{opt}/{z}"
-    population = _find_population(session, release.id, imf, z, opt, None)
-    if population is None:
-        stats.warn(console, f"{tag}: population not ingested — skipped")
-        return
-
-    existing = session.scalar(
-        select(m.HrdGrid).where(m.HrdGrid.population_id == population.id).limit(1)
-    )
-    if existing is not None:
-        if not replace:
-            console.print(f"  [dim]{tag}: already ingested — skipped[/dim]")
-            return
-        session.execute(delete(m.HrdGrid).where(m.HrdGrid.population_id == population.id))
-
-    path = index.find(f"hrs-{opt}-{imf}.{z}.dat")
-    if path is None:
-        stats.warn(console, f"{tag}: hrs file not found — skipped")
-        return
-
-    console.print(f"  {tag}: parsing [bold]{path.name}[/bold]")
-    grids = parsers.parse_hrs(path)
-    rows = []
-    for d_index, diagram in enumerate(parsers.HRS_DIAGRAMS):
-        if diagram not in diagrams:
-            continue
-        for h_class in range(parsers.HRS_N_CLASSES):
-            for age_index in range(parsers.N_AGES):
-                rows.append(
-                    {
-                        "population_id": population.id,
-                        "age_index": age_index,
-                        "log_age": float(sedlib.BPASS_LOG_AGES[age_index]),
-                        "diagram": diagram,
-                        "h_class": h_class,
-                        "grid": sedlib.encode_f32(grids[d_index, h_class, age_index]),
-                    }
-                )
-    for start in range(0, len(rows), 64):
-        session.execute(insert(m.HrdGrid), rows[start : start + 64])
-    stats.hrd_files += 1
-
-
-# ---------------------------------------------------------------------------
-# stellar models
-# ---------------------------------------------------------------------------
-
-
-def _ingest_models(
-    session: Session,
-    console: Console,
-    stats: IngestStats,
-    index: FileIndex,
-    spec: dict,
-    replace: bool,
-) -> None:
-    z = spec["z"]
-    kind = spec.get("kind")
-    select_spec = dict(spec.get("select", {}))
-    limit = spec.get("limit")
-    m1_range = select_spec.pop("m1_range", None)
-    selector = make_selector(
-        kind=kind,
-        z_label=z,
-        m1=select_spec.get("m1"),
-        q=select_spec.get("q"),
-        logp=select_spec.get("logp"),
-        m1_range=tuple(m1_range) if m1_range else None,
-    )
-    tag = f"models {z}/{kind or 'any'}"
-
-    found: list[tuple[ModelName, TrackData, str, str]] = []  # name, track, source, sha
-
-    # 1) unpacked sneplot files anywhere under the source tree
-    for name, path in iter_models_in_dir(index.root, selector, limit):
-        try:
-            track = parsers.parse_sneplot(path)
-        except ParseError as exc:
-            stats.warn(console, f"{tag}: {exc}")
-            continue
-        found.append((name, track, str(path.relative_to(index.root)), _sha256(path)))
-
-    # 2) tar archives if the directory scan found nothing
-    if not found:
-        tar_names = [f"NEWBINMODS.{z}.tar", "NEWSINMODS.tar", f"NEWSINMODS.{z}.tar"]
-        tars = [p for t in tar_names for p in index.by_name.get(t, [])]
-        tars += index.find_all_suffixed("NEWBINMODS", ".tar") + index.find_all_suffixed(
-            "NEWSINMODS", ".tar"
+        session.execute(
+            insert(m.StarCounts), _rows_from_table(population_id, table, _STAR_COUNT_FIELDS)
         )
-        seen: set[Path] = set()
-        for tar_path in tars:
-            if tar_path in seen:
-                continue
-            seen.add(tar_path)
-            remaining = None if limit is None else limit - len(found)
-            if remaining is not None and remaining <= 0:
-                break
-            for name, blob in iter_selected_models(tar_path, selector, remaining):
-                try:
-                    track = parsers.parse_sneplot(blob, name=name.raw)
-                except ParseError as exc:
-                    stats.warn(console, f"{tag}: {exc}")
-                    continue
-                found.append(
-                    (
-                        name,
-                        track,
-                        f"{tar_path.relative_to(index.root)}::{name.raw}",
-                        hashlib.sha256(blob).hexdigest(),
-                    )
-                )
-
-    if not found:
-        stats.warn(console, f"{tag}: no matching model files found")
-        return
-
-    for name, track, source_file, sha in found:
-        existing = session.scalar(
-            select(m.StellarModel).where(
-                m.StellarModel.z_label == name.z_label,
-                m.StellarModel.filename == name.raw,
-            )
-        )
-        if existing is not None:
-            if not replace:
-                stats.skipped_models += 1
-                continue
-            session.execute(delete(m.StellarModel).where(m.StellarModel.id == existing.id))
-            session.flush()
-
-        _insert_model(session, name, track, source_file, sha, spec)
-        stats.models += 1
-        console.print(f"  {tag}: loaded [bold]{name.raw}[/bold] ({track.n_steps} steps)")
-
-
-def _insert_model(
-    session: Session,
-    name: ModelName,
-    track: TrackData,
-    source_file: str,
-    sha256: str,
-    spec: dict,
-    is_synthetic: bool = False,
-) -> m.StellarModel:
-    model = m.StellarModel(
-        z_label=name.z_label,
-        z_value=Z_VALUES.get(name.z_label, float("nan")),
-        kind=name.kind,
-        filename=name.raw,
-        m1_init=name.m1,
-        q_init=name.q,
-        logp_init=name.logp,
-        mrem_init=name.mrem,
-        n_steps=track.n_steps,
-        final_mass=float(track["m1"][-1]),
-        curated=bool(spec.get("curated", False)),
-        title=spec.get("title"),
-        description=spec.get("description"),
-        source_file=source_file,
-        sha256=sha256,
-        is_synthetic=is_synthetic,
-    )
-    session.add(model)
-    session.flush()
-
-    step_rows = []
-    steps = track["step"].astype(int)
-    for i in range(track.n_steps):
-        row: dict = {"model_id": model.id, "step": int(steps[i])}
-        for field_name in _STEP_FIELDS:
-            col = track.get(field_name)
-            row[field_name] = _nan_to_none(float(col[i])) if col is not None else None
-        step_rows.append(row)
-    for start in range(0, len(step_rows), 2000):
-        session.execute(insert(m.StellarModelStep), step_rows[start : start + 2000])
-
-    for event in detect_events(track):
-        session.add(
-            m.ModelEvent(
-                model_id=model.id,
-                event_type=event.event_type,
-                step=event.step,
-                age_yr=event.age_yr,
-                label=event.label,
-                note=event.note,
-            )
-        )
-    session.flush()
-    return model
 
 
 # ---------------------------------------------------------------------------
@@ -840,31 +668,22 @@ def run_ingest(
                 for z in pop_spec.get("metallicities", []):
                     for alpha in alphas:
                         _ingest_population(
-                            session, console, stats, index, release,
-                            pop_spec["imf"], z, opt, alpha,
-                            pop_spec.get("products", ["spectra"]), replace,
+                            session,
+                            console,
+                            stats,
+                            index,
+                            release,
+                            pop_spec["imf"],
+                            z,
+                            opt,
+                            alpha,
+                            pop_spec.get("products", ["spectra"]),
+                            replace,
                         )
-
-        for hrs_spec in spec.get("hrs", []):
-            release = releases.get(str(hrs_spec["release"]))
-            if release is None:
-                continue
-            for opt in hrs_spec.get("pop_types", ["bin"]):
-                for z in hrs_spec.get("metallicities", []):
-                    _ingest_hrs(
-                        session, console, stats, index, release,
-                        hrs_spec["imf"], z, opt,
-                        hrs_spec.get("diagrams", ["TL"]), replace,
-                    )
-
-        for model_spec in spec.get("models", []):
-            _ingest_models(session, console, stats, index, model_spec, replace)
 
     console.print(
         f"[green]done[/green]: {stats.populations} populations "
-        f"({stats.skipped_populations} skipped), {stats.hrd_files} hrs files, "
-        f"{stats.models} models ({stats.skipped_models} skipped), "
-        f"{len(stats.warnings)} warnings"
+        f"({stats.skipped_populations} skipped), {len(stats.warnings)} warnings"
     )
     from bib.web.templating import invalidate_synthetic_cache
 

@@ -9,11 +9,11 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy.orm import Session
 
 from bib.api.v1.helpers import get_population_or_404, resolve_age_index
+from bib.api.v1.pipeline import IGM_PARAM_PATTERN, PipelineResult, filter_status, run_pipeline
 from bib.db import models as m
 from bib.db.session import get_db
 from bib.science import redshift as zlib
 from bib.science import sed as sedlib
-from bib.science.dust import DUST_LAWS, apply_dust
 from bib.science.filters import get_curves
 from bib.science.photometry import (
     AB_ZERO_FNU,
@@ -62,43 +62,17 @@ def _native_sed(
     return wavelength, flux, sed
 
 
-def _transform(
-    wavelength: np.ndarray,
-    flux: np.ndarray,
-    mass: float,
-    dust_law: str | None,
-    ebv: float,
-    rv: float | None,
-) -> tuple[np.ndarray, dict | None]:
-    flux = sedlib.scale_by_mass(flux, mass)
-    dust_info = None
-    if dust_law and ebv > 0:
-        if dust_law not in DUST_LAWS:
-            raise HTTPException(422, f"unknown dust law '{dust_law}'")
-        result = apply_dust(wavelength, flux, dust_law, ebv, rv)
-        flux, dust_info = result.flux, {
-            "law": dust_law, "ebv": ebv, "rv": result.rv, "a_v": result.a_v,
-            "applied_range_a": list(result.applied_range_a),
-        }
-    return flux, dust_info
+def _photometry_payload(pipe: PipelineResult, curves: list[FilterCurve]) -> list[dict]:
+    """AB magnitudes through ``curves`` of the pipeline's observer-frame SED.
 
-
-def _observe(
-    wavelength: np.ndarray, flux: np.ndarray, z: float
-) -> tuple[np.ndarray, np.ndarray]:
-    """Rest L_sun/Å -> observer-frame f_λ (cgs). z=0 means 'at 10 pc'."""
-    return zlib.observe(wavelength, flux, z)
-
-
-def _photometry_payload(
-    wl_obs: np.ndarray,
-    flam_cgs: np.ndarray,
-    curves: list[FilterCurve],
-    z: float,
-) -> list[dict]:
+    At z = 0 the pipeline leaves L_sun/Å (rest frame); ``ab_magnitude`` then
+    places the source at 10 pc. At z > 0 the flux is already f_λ (cgs).
+    """
+    z = pipe.redshift
+    flux_unit = "flam_cgs" if z > 0 else "lsun_a"
     out = []
     for curve in curves:
-        result = ab_magnitude(wl_obs, flam_cgs, curve, flux_unit="flam_cgs")
+        result = ab_magnitude(pipe.wl_obs, pipe.flux_obs, curve, flux_unit=flux_unit)
         entry = {
             "filter": curve.name,
             "display_name": curve.display_name,
@@ -108,6 +82,13 @@ def _photometry_payload(
             "ab_mag": None if result.ab_mag is None else round(result.ab_mag, 4),
             "coverage": round(result.coverage, 3),
             "plot_level": None,
+            **filter_status(
+                curve,
+                z=z,
+                dust_law=pipe.dust_law,
+                dust_requested=pipe.dust is not None,
+                igm_requested=pipe.igm_model is not None,
+            ),
         }
         if result.ab_mag is not None:
             # The measured magnitude as a point on the SED Explorer's curve:
@@ -117,6 +98,15 @@ def _photometry_payload(
             entry["plot_level"] = float(zlib.plot_level_lsun_a(f_lam_pivot, z))
         out.append(entry)
     return out
+
+
+def _attenuation_payload(pipe: PipelineResult) -> dict:
+    """Common ``dust`` / ``igm`` / ``pipeline`` keys for every SED-derived response."""
+    return {
+        "dust": pipe.dust_info,
+        "igm": pipe.igm_info,
+        "pipeline": ["mass", "dust (rest frame)", "redshift", "igm (observer frame)"],
+    }
 
 
 def _frame_info(z: float) -> dict:
@@ -137,15 +127,18 @@ def get_photometry(
         le=11.0,
         description="log10(age/yr) on the BPASS 0.1 dex grid (6.0–11.0). Prefer this over age_index.",
     ),
-    age_index: int | None = Query(
-        None, ge=0, le=50, description="0–50 grid index; prefer log_age"
-    ),
+    age_index: int | None = Query(None, ge=0, le=50, description="0–50 grid index; prefer log_age"),
     filters: str | None = Query(None, description="Comma-separated filter names (default: all)"),
     mass: float = Query(1e6, gt=0),
     dust_law: str | None = None,
     ebv: float = Query(0.0, ge=0.0, le=5.0),
-    rv: float | None = Query(None, gt=1.0, lt=10.0),
+    rv: float | None = Query(None, ge=2.0, le=6.0, description="R_V for CCM89/F99 (2.0–6.0)"),
     redshift: float = Query(0.0, ge=0.0, le=zlib.MAX_REDSHIFT),
+    igm: str = Query(
+        "none",
+        pattern=IGM_PARAM_PATTERN,
+        description="IGM attenuation applied in the observer frame when redshift > 0",
+    ),
     db: Session = Depends(get_db),
 ) -> dict:
     """AB magnitudes of the population SED through bundled filters.
@@ -155,14 +148,18 @@ def get_photometry(
     ``redshift>0``: apparent magnitudes — the SED is shifted to the observer
     frame at the luminosity distance of the given z (flat ΛCDM, H0=70,
     Ωm=0.3) and convolved there, so K-corrections are included naturally.
-    Dust (if any) is applied in the rest frame. Computed on the
+    Dust (if any) is applied in the rest frame, only inside the law's
+    validity window; IGM attenuation (if requested) in the observer frame.
+    Each entry carries ``dust_status`` / ``igm_status`` / ``attenuation_label``
+    stating what was actually applied inside that passband. Computed on the
     full-resolution SED; magnitudes scale with ``mass`` (BPASS native:
     10^6 Msun formed).
     """
     age_index = resolve_age_index(age_index, log_age)
     wavelength, flux, sed = _native_sed(db, population_id, age_index)
-    flux, dust_info = _transform(wavelength, flux, mass, dust_law, ebv, rv)
-    wl_obs, flam = _observe(wavelength, flux, redshift)
+    pipe = run_pipeline(
+        wavelength, flux, mass=mass, dust_law=dust_law, ebv=ebv, rv=rv, z=redshift, igm=igm
+    )
     names = [n.strip() for n in filters.split(",") if n.strip()] if filters else None
     curves = get_curves(db, names)
     if names and len(curves) != len(names):
@@ -173,9 +170,9 @@ def get_photometry(
         "age_index": age_index,
         "log_age": sed.log_age,
         "mass": mass,
-        "dust": dust_info,
+        **_attenuation_payload(pipe),
         **_frame_info(redshift),
-        "photometry": _photometry_payload(wl_obs, flam, curves, redshift),
+        "photometry": _photometry_payload(pipe, curves),
     }
 
 
@@ -188,8 +185,9 @@ async def post_custom_photometry(
     mass: float = Form(1e6, gt=0),
     dust_law: str | None = Form(None),
     ebv: float = Form(0.0, ge=0.0, le=5.0),
-    rv: float | None = Form(None),
+    rv: float | None = Form(None, ge=2.0, le=6.0),
     redshift: float = Form(0.0, ge=0.0, le=zlib.MAX_REDSHIFT),
+    igm: str = Form("none", pattern=IGM_PARAM_PATTERN),
     db: Session = Depends(get_db),
 ) -> dict:
     """Upload a transmission curve, get the AB magnitude plus the parsed curve back."""
@@ -205,16 +203,17 @@ async def post_custom_photometry(
         raise HTTPException(422, f"could not parse filter: {exc}") from exc
 
     wavelength, flux, sed = _native_sed(db, population_id, age_index)
-    flux, dust_info = _transform(wavelength, flux, mass, dust_law, ebv, rv)
-    wl_obs, flam = _observe(wavelength, flux, redshift)
-    payload = _photometry_payload(wl_obs, flam, [curve], redshift)[0]
+    pipe = run_pipeline(
+        wavelength, flux, mass=mass, dust_law=dust_law, ebv=ebv, rv=rv, z=redshift, igm=igm
+    )
+    payload = _photometry_payload(pipe, [curve])[0]
     step = max(1, curve.wavelength.size // 500)
     return {
         "population_id": population_id,
         "age_index": age_index,
         "log_age": sed.log_age,
         "mass": mass,
-        "dust": dust_info,
+        **_attenuation_payload(pipe),
         **_frame_info(redshift),
         "result": payload,
         "curve_preview": {
