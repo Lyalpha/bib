@@ -6,7 +6,7 @@ network access.
 
     uv run python scripts/fetch_filters.py
 
-SVO FPS: http://svo2.cab.inta-csic.es/theory/fps/
+SVO FPS: https://svo2.cab.inta-csic.es/theory/fps/
 Please acknowledge: Rodrigo, C., Solano, E., 2020 (SVO Filter Profile Service);
 Rodrigo, C., Solano, E., Bayo, A., 2012 (IVOA report).
 """
@@ -23,11 +23,11 @@ import yaml
 from astropy.io.votable import parse_single_table
 
 OUT_DIR = Path(__file__).resolve().parents[1] / "data" / "filters"
-FPS_URL = "http://svo2.cab.inta-csic.es/theory/fps/fps.php"
+FPS_URL = "https://svo2.cab.inta-csic.es/theory/fps/fps.php"
 
 SVO_CITATION = (
     "SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo 2012), "
-    "http://svo2.cab.inta-csic.es/theory/fps/"
+    "https://svo2.cab.inta-csic.es/theory/fps/"
 )
 
 # (bib name, SVO ID, display name, group, facility)

@@ -7,7 +7,7 @@
   group: 2MASS
   n_points: 58
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: 2MASS/2MASS.H
 2mass.j:
   detector_type: photon
@@ -16,7 +16,7 @@
   group: 2MASS
   n_points: 107
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: 2MASS/2MASS.J
 2mass.ks:
   detector_type: photon
@@ -25,7 +25,7 @@
   group: 2MASS
   n_points: 76
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: 2MASS/2MASS.Ks
 cousins.i:
   detector_type: energy
@@ -34,7 +34,7 @@ cousins.i:
   group: Johnson-Cousins
   n_points: 43
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: Generic/Cousins.I
 cousins.r:
   detector_type: energy
@@ -43,7 +43,7 @@ cousins.r:
   group: Johnson-Cousins
   n_points: 53
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: Generic/Cousins.R
 gaia.bp:
   detector_type: photon
@@ -52,7 +52,7 @@ gaia.bp:
   group: Gaia
   n_points: 426
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: GAIA/GAIA3.Gbp
 gaia.g:
   detector_type: photon
@@ -61,7 +61,7 @@ gaia.g:
   group: Gaia
   n_points: 731
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: GAIA/GAIA3.G
 gaia.rp:
   detector_type: photon
@@ -70,7 +70,7 @@ gaia.rp:
   group: Gaia
   n_points: 471
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: GAIA/GAIA3.Grp
 galex.fuv:
   detector_type: photon
@@ -79,7 +79,7 @@ galex.fuv:
   group: GALEX
   n_points: 471
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: GALEX/GALEX.FUV
 galex.nuv:
   detector_type: photon
@@ -88,7 +88,7 @@ galex.nuv:
   group: GALEX
   n_points: 1321
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: GALEX/GALEX.NUV
 hst.f275w:
   detector_type: photon
@@ -97,7 +97,7 @@ hst.f275w:
   group: HST
   n_points: 1210
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: HST/WFC3_UVIS2.F275W
 hst.f336w:
   detector_type: photon
@@ -106,7 +106,7 @@ hst.f336w:
   group: HST
   n_points: 913
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: HST/WFC3_UVIS2.F336W
 hst.f435w:
   detector_type: photon
@@ -115,7 +115,7 @@ hst.f435w:
   group: HST
   n_points: 1454
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: HST/ACS_WFC.F435W
 hst.f555w:
   detector_type: photon
@@ -124,7 +124,7 @@ hst.f555w:
   group: HST
   n_points: 1935
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: HST/ACS_WFC.F555W
 hst.f606w:
   detector_type: photon
@@ -133,7 +133,7 @@ hst.f606w:
   group: HST
   n_points: 2715
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: HST/ACS_WFC.F606W
 hst.f814w:
   detector_type: photon
@@ -142,7 +142,7 @@ hst.f814w:
   group: HST
   n_points: 6260
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: HST/ACS_WFC.F814W
 johnson.b:
   detector_type: energy
@@ -151,7 +151,7 @@ johnson.b:
   group: Johnson-Cousins
   n_points: 11
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: Generic/Johnson.B
 johnson.u:
   detector_type: energy
@@ -160,7 +160,7 @@ johnson.u:
   group: Johnson-Cousins
   n_points: 13
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: Generic/Johnson.U
 johnson.v:
   detector_type: energy
@@ -169,7 +169,7 @@ johnson.v:
   group: Johnson-Cousins
   n_points: 15
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: Generic/Johnson.V
 jwst.f070w:
   detector_type: photon
@@ -178,7 +178,7 @@ jwst.f070w:
   group: JWST
   n_points: 201
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: JWST/NIRCam.F070W
 jwst.f090w:
   detector_type: photon
@@ -187,7 +187,7 @@ jwst.f090w:
   group: JWST
   n_points: 253
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: JWST/NIRCam.F090W
 jwst.f115w:
   detector_type: photon
@@ -196,7 +196,7 @@ jwst.f115w:
   group: JWST
   n_points: 340
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: JWST/NIRCam.F115W
 jwst.f150w:
   detector_type: photon
@@ -205,7 +205,7 @@ jwst.f150w:
   group: JWST
   n_points: 445
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: JWST/NIRCam.F150W
 jwst.f200w:
   detector_type: photon
@@ -214,7 +214,7 @@ jwst.f200w:
   group: JWST
   n_points: 609
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: JWST/NIRCam.F200W
 jwst.f277w:
   detector_type: photon
@@ -223,7 +223,7 @@ jwst.f277w:
   group: JWST
   n_points: 804
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: JWST/NIRCam.F277W
 jwst.f356w:
   detector_type: photon
@@ -232,7 +232,7 @@ jwst.f356w:
   group: JWST
   n_points: 916
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: JWST/NIRCam.F356W
 jwst.f444w:
   detector_type: photon
@@ -241,7 +241,7 @@ jwst.f444w:
   group: JWST
   n_points: 1027
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: JWST/NIRCam.F444W
 lsst.g:
   detector_type: photon
@@ -250,7 +250,7 @@ lsst.g:
   group: LSST
   n_points: 1806
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: LSST/LSST.g
 lsst.i:
   detector_type: photon
@@ -259,7 +259,7 @@ lsst.i:
   group: LSST
   n_points: 1570
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: LSST/LSST.i
 lsst.r:
   detector_type: photon
@@ -268,7 +268,7 @@ lsst.r:
   group: LSST
   n_points: 1690
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: LSST/LSST.r
 lsst.u:
   detector_type: photon
@@ -277,7 +277,7 @@ lsst.u:
   group: LSST
   n_points: 886
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: LSST/LSST.u
 lsst.y:
   detector_type: photon
@@ -286,7 +286,7 @@ lsst.y:
   group: LSST
   n_points: 1906
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: LSST/LSST.y
 lsst.z:
   detector_type: photon
@@ -295,7 +295,7 @@ lsst.z:
   group: LSST
   n_points: 1356
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: LSST/LSST.z
 sdss.g:
   detector_type: photon
@@ -304,7 +304,7 @@ sdss.g:
   group: SDSS
   n_points: 89
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: SLOAN/SDSS.g
 sdss.i:
   detector_type: photon
@@ -313,7 +313,7 @@ sdss.i:
   group: SDSS
   n_points: 89
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: SLOAN/SDSS.i
 sdss.r:
   detector_type: photon
@@ -322,7 +322,7 @@ sdss.r:
   group: SDSS
   n_points: 75
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: SLOAN/SDSS.r
 sdss.u:
   detector_type: photon
@@ -331,7 +331,7 @@ sdss.u:
   group: SDSS
   n_points: 47
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: SLOAN/SDSS.u
 sdss.z:
   detector_type: photon
@@ -340,5 +340,5 @@ sdss.z:
   group: SDSS
   n_points: 141
   source: SVO Filter Profile Service (Rodrigo & Solano 2020; Rodrigo, Solano & Bayo
-    2012), http://svo2.cab.inta-csic.es/theory/fps/
+    2012), https://svo2.cab.inta-csic.es/theory/fps/
   svo_id: SLOAN/SDSS.z
