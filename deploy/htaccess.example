@@ -18,6 +18,13 @@ RequestHeader set X-Forwarded-Port "443"
 
 RewriteEngine On
 RewriteBase /
+
+# Optional canonical host: 301 the VM's own hostname (and anything else the
+# certificate covers) to the public name, so only one host is ever cited.
+# Uncomment and set your public name:
+# RewriteCond %{HTTP_HOST} !^bib\.example\.ac\.uk$ [NC]
+# RewriteRule ^(.*)$ https://bib.example.ac.uk/$1 [R=301,L]
+
 RewriteRule ^index\.html$ http://127.0.0.1:8001/ [P,L]
 RewriteRule ^$ http://127.0.0.1:8001/ [P,L]
 RewriteRule ^(.*)$ http://127.0.0.1:8001/$1 [P,L]
