@@ -469,7 +469,8 @@ post_deploy_smoke() {
   else
     echo "smoke: no populations loaded; skipping the photometry call" >&2
   fi
-  curl -fsSI "$base/" | grep -qi '^content-security-policy:' \
+  # GET, not HEAD: the routes are GET-only and HEAD answers 405.
+  curl -fsS -D - -o /dev/null "$base/" | grep -qi '^content-security-policy:' \
     || { echo "smoke: Content-Security-Policy header missing" >&2; return 1; }
   log "smoke OK"
 }
