@@ -313,6 +313,15 @@ Dump the database you actually serve (production DSN), not the compose
 sandbox defaults. Filter CSVs and `branding.yaml` live on disk — include
 them in host backups if you customized them.
 
+For an unattended nightly dump under `systemd --user`, install
+`deploy/bib-backup.service` and `deploy/bib-backup.timer` into
+`~/.config/systemd/user/` and `systemctl --user enable --now bib-backup.timer`.
+The service reads the DSN from `~/.config/bib/env`, writes `-Fc` dumps to
+`~/backups/bib/` (≈6 GB each for the full grid) and keeps the newest seven.
+Run it once by hand with `systemctl --user start bib-backup.service` and
+check `journalctl --user -u bib-backup`. Copy the directory off-host if you
+need more than local protection.
+
 ## Compose sandbox vs public
 
 `compose.yaml` is a **local sandbox**: database user/password `bib`/`bib`,
