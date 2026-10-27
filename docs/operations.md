@@ -317,7 +317,7 @@ For an unattended nightly dump under `systemd --user`, install
 `deploy/bib-backup.service` and `deploy/bib-backup.timer` into
 `~/.config/systemd/user/` and `systemctl --user enable --now bib-backup.timer`.
 The service reads the DSN from `~/.config/bib/env`, writes `-Fc` dumps to
-`~/backups/bib/` (≈6 GB each for the full grid) and keeps the newest seven.
+`~/backups/bib/` (≈6 GB each for the full grid) and keeps the newest three (size the retention to your disk).
 Run it once by hand with `systemctl --user start bib-backup.service` and
 check `journalctl --user -u bib-backup`. Copy the directory off-host if you
 need more than local protection.
