@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 # TODO: fill the author before tagging; keep in sync with CITATION.cff and .zenodo.json.
-authors = [{ name = "<Given names> <Family name>" }]
+authors = [{ name = "J. D. Lyman" }]
 keywords = ["astronomy", "BPASS", "stellar populations", "spectral synthesis"]
 dependencies = [
     "fastapi>=0.115",

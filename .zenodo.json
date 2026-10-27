@@ -8,9 +8,9 @@
   "description": "<p>A pedagogical web explorer and REST API for BPASS (Binary Population and Spectral Synthesis) simple-stellar-population products: interactive SEDs, photon-weighted synthetic AB photometry through SVO filter curves, screen dust extinction within each law's validity window, redshifting with flat ΛCDM distances, and optional IGM attenuation (Inoue et al. 2014; Madau 1995), with per-filter flags stating what was applied.</p><p>bib serves derived BPASS products under the BPASS team's CC BY-NC 4.0 licence with attribution; the software itself is MIT licensed.</p>",
   "creators": [
     {
-      "name": "<Family name>, <Given names>",
-      "orcid": "<ORCID>",
-      "affiliation": "<affiliation>"
+      "name": "Lyman, J. D.",
+      "orcid": "0000-0002-3464-0642",
+      "affiliation": "University of Warwick"
     }
   ],
   "keywords": [

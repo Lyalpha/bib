@@ -18,7 +18,7 @@ abstract: >-
 version: 1.0.0
 date-released: "2026-10-27"
 license: MIT
-repository-code: "https://example.org/<repository URL>"
+repository-code: "https://github.com/Lyalpha/bib"
 url: "https://bib.warwick.ac.uk"
 keywords:
   - astronomy
@@ -27,10 +27,10 @@ keywords:
   - spectral synthesis
   - synthetic photometry
 authors:
-  - family-names: "<Family name>"
-    given-names: "<Given names>"
-    orcid: "https://orcid.org/0000-0000-0000-0000"  # <ORCID> placeholder
-    affiliation: "<affiliation>"
+  - family-names: "Lyman"
+    given-names: "J. D."
+    orcid: "https://orcid.org/0000-0002-3464-0642"
+    affiliation: "University of Warwick"
 references:
   - type: article
     title: "Binary Population and Spectral Synthesis Version 2.0: Photometric and Spectroscopic Predictions for Stellar Populations"
