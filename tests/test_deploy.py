@@ -40,16 +40,25 @@ def test_deploy_artifacts_are_site_agnostic():
         assert needle not in blob, needle
 
 
-def test_notebooks_are_site_agnostic():
-    """Notebooks read the instance URL from BIB_API; no host is baked in."""
+PUBLIC_INSTANCE = "https://bib.warwick.ac.uk"
+
+
+def test_notebooks_default_to_public_instance_via_env():
+    """Notebooks read BIB_API (defaulting to the public instance); no VM hostnames."""
     assert NOTEBOOKS, "no notebooks found"
     for path in NOTEBOOKS:
         notebook = json.loads(path.read_text())
         # Cell sources only: embedded image outputs are base64 noise.
-        text = "\n".join("".join(cell["source"]) for cell in notebook["cells"]).lower()
-        assert 'os.environ.get("bib_api"' in text, f"{path.name} does not read BIB_API"
+        text = "\n".join("".join(cell["source"]) for cell in notebook["cells"])
+        assert f'os.environ.get("BIB_API", "{PUBLIC_INSTANCE}")' in text, (
+            f"{path.name} does not read BIB_API with the public default"
+        )
+        lowered = text.lower()
         for needle in SITE_SPECIFIC:
-            assert needle not in text, f"{path.name}: {needle}"
+            if needle == "warwick":
+                continue  # the public domain is allowed; VM names are not
+            assert needle not in lowered, f"{path.name}: {needle}"
+        assert "lnx.warwick.ac.uk" not in lowered, f"{path.name} names a VM, not the public host"
 
 
 def test_user_unit_runs_gunicorn_on_loopback():

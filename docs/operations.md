@@ -8,6 +8,23 @@ HTTP endpoints, and visit counts are first-party path totals.
 For branding, bind address, and the base env table see
 [Branding & deployment](deployment.md).
 
+## Our deployment
+
+| | production | staging |
+|---|---|---|
+| public name | `https://bib.warwick.ac.uk` | `https://cyan-quail.lnx.warwick.ac.uk` |
+| host | `azure-whydah.lnx.warwick.ac.uk` (RHEL 10, Apache 2.4, PostgreSQL 16) | `cyan-quail.lnx.warwick.ac.uk` (same stack) |
+| topology | Apache `.htaccess` `[P]` proxy → gunicorn on `127.0.0.1:8001` (`systemd --user`, `svc_user`); the VM hostname 301s to the public name; HSTS set by Apache | same, no redirect |
+| what deploys | tagged releases (`v*`), via `scripts/deploy-vm.sh --host … --skip-db` or `git pull --ff-only` + `uv sync --frozen --extra prod` + `systemctl --user restart bib.service` | `main` |
+| Sentry env | `production` | `staging` |
+| data | full v2.2.1 grid (8 IMFs × bin/sin × 13 Z) + v2.3 (imf135_300, 5 α) = 338 populations; raw tarballs in `~/bpass_v2.2.1`, `~/bpass_v2.3` for future fills | copy of the same |
+
+Production was seeded from staging with `pg_dump -Fc` / `pg_restore
+--no-owner --no-privileges` (same PostgreSQL major), then `TRUNCATE
+site_daily_stat`; an idempotent `bib ingest` pass over the three manifests
+confirmed every population as already present. Nightly dumps: see
+"Schema and backups".
+
 ## Bind locally; proxy in front
 
 `bib serve` defaults to `0.0.0.0:8000`. On a public host bind loopback and

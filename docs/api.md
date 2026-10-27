@@ -39,6 +39,8 @@ from the public schema.
 
 Replace `{id}` with an `id` from `GET /api/v1/populations` on the instance you
 are querying. The Data & API page on a running server fills these in for you.
+The examples use `localhost:8000` (a local checkout); against the public
+instance substitute `https://bib.warwick.ac.uk`.
 
 ```sh
 # liveness / readiness (ready is 503 when PostgreSQL is down)

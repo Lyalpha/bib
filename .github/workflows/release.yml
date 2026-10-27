@@ -45,7 +45,7 @@ jobs:
           echo "version=$tag" >> "$GITHUB_OUTPUT"
       - name: No placeholders left in release metadata
         run: |
-          if grep -nE "<(Family name|Given names|ORCID|affiliation|repository URL|final domain)>" \
+          if grep -nE "<(Family name|Given names|ORCID|affiliation|repository URL)>" \
                CITATION.cff .zenodo.json pyproject.toml LICENSE; then
             echo "fill the placeholders before tagging"; exit 1
           fi

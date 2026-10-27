@@ -12,6 +12,11 @@ user-supplied filters, and dust extinction of the SED.
 - Ships with a clearly-labelled **synthetic demo dataset** so you can explore the
   interface immediately, before ingesting real BPASS data.
 
+The public instance, with the full v2.2.1 SED grid and the v2.3 α-enhanced
+grids loaded, is **<https://bib.warwick.ac.uk>** (REST API at
+`https://bib.warwick.ac.uk/api/docs`). The sections below are for running
+your own copy.
+
 > BPASS data are licensed by the BPASS team under
 > [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). If you use
 > results obtained through this tool, please include the BPASS acknowledgement

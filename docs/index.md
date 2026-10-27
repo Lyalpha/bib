@@ -12,6 +12,10 @@ release papers. BPASS data are licensed
 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) by the BPASS team
 (J. J. Eldridge & E. R. Stanway); bib itself is MIT.
 
+The public instance is **<https://bib.warwick.ac.uk>**; its API is documented
+at <https://bib.warwick.ac.uk/api/docs>. The rest of this page is about
+running your own copy.
+
 ## Quickstart — containers
 
 ```sh
