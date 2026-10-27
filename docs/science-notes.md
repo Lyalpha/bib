@@ -133,7 +133,7 @@ bib is a quick-look and teaching tool. Things it deliberately does **not** do:
 fiducial v2.2.1 population — `imf135_300`, \(Z=0.002\), binaries, from the
 files `scripts/fetch_bpass_subset.py` downloads — and compares what bib
 serves with two independent references. The numbers below were measured
-with bib 0.1.0 on that subset and are the values the tests guard.
+with bib 1.0.0 on that subset and are the values the tests guard.
 
 **Photometry engine vs synphot.** The same stored SED through the same SVO
 `sdss.g` curve, AB system: bib − synphot = **+0.07 mmag** at log age 7, 8,

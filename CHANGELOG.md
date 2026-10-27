@@ -4,9 +4,9 @@ All notable changes to bib are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] — 2026-10-20
+## [1.0.0] — 2026-10-27
 
-First public release.
+First public release, served at <https://bib.warwick.ac.uk>.
 
 ### Added
 - SSP Explorer: native-resolution BPASS SEDs (v2.2.1 and the v2.3
@@ -34,6 +34,9 @@ First public release.
   preserving visit counts, container and bare-metal deployment recipes.
 - Release metadata: `CITATION.cff`, `.zenodo.json`, `docs/references.md`,
   `CONTRIBUTING.md`.
+- Production deployment on `bib.warwick.ac.uk` (the VM hostname redirects to
+  it; HSTS); staging stays on the previous host. Topology recorded in
+  `docs/operations.md`.
 
 ### Changed
 - Dust laws are **no longer extrapolated** outside their fitted wavelength
