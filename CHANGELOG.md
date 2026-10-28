@@ -4,6 +4,18 @@ All notable changes to bib are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- SSP explorer: the IGM band label no longer doubles its parentheses
+  ("Inoue et al. (2014)" was wrapped in another pair).
+- SSP explorer: a zoomed or panned SED view now follows the spectrum when
+  the redshift or formed-mass slider moves, instead of being left behind.
+- SSP explorer: Plotly's "home" button restored the ranges of the very first
+  draw (z = 0), which was then recorded as a user zoom and could leave the
+  SED permanently off-screen. Replaced by "Recentre axes on the current SED".
+
 ## [1.0.0] — 2026-10-27
 
 First public release, served at <https://bib.warwick.ac.uk>.

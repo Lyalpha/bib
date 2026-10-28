@@ -65,6 +65,7 @@ const state = {
   yLog: true,
   userX: null,
   userY: null,
+  viewMassLog: 6, // log10 mass the current userY lock was last aligned to
   pins: [],
   pinSeq: 0,
   syncPins: false,
@@ -705,7 +706,8 @@ function addAttenuationRegions(layout, xExtent) {
   }
   if (igmModelKey() !== "none" && igmFactorFor(z)) {
     const lya = 1215.67 * stretch;
-    band(1e-6, lya, IGM_FILL, IGM_EDGE_COLOR, `IGM-attenuated<br>(${esc(igmLabel(state.igmModel))})`, [lya]);
+    // Model labels already carry a year in parentheses ("Inoue et al. (2014)").
+    band(1e-6, lya, IGM_FILL, IGM_EDGE_COLOR, `IGM-attenuated<br>${esc(igmLabel(state.igmModel))}`, [lya]);
   }
 }
 
@@ -882,6 +884,49 @@ function bindSedViewLock(host) {
   });
 }
 
+/** Drop any zoom/pan lock so the next draw frames the current SED again. */
+function recentreSedView() {
+  state.userX = null;
+  state.userY = null;
+  renderFrame(clock.t);
+}
+
+/**
+ * Carry a zoomed/panned view along with the data when a slider rescales it:
+ * wavelengths × xFactor (ν axes move the other way), flux × yFactor. Without
+ * this a deliberate zoom is left behind the moment the redshift or mass moves.
+ */
+function shiftLockedView(xFactor, yFactor) {
+  if (state.userX && xFactor > 0 && xFactor !== 1) {
+    const f = state.xNu ? 1 / xFactor : xFactor;
+    state.userX = state.xLog
+      ? state.userX.map((v) => v + Math.log10(f))
+      : state.userX.map((v) => v * f);
+  }
+  if (state.userY && yFactor > 0 && yFactor !== 1) {
+    state.userY = state.yLog
+      ? state.userY.map((v) => v + Math.log10(yFactor))
+      : state.userY.map((v) => v * yFactor);
+  }
+}
+
+/** Plotly's own "home" restores the ranges of the *first* draw (z=0, first
+ * population), which our relayout hook would record as a user zoom — the
+ * SED could then sit permanently off-screen. Replace it with a recentre. */
+const SED_PLOT_CONFIG = {
+  responsive: true,
+  displaylogo: false,
+  modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d", "resetScale2d"],
+  modeBarButtonsToAdd: [
+    {
+      name: "recentreSed",
+      title: "Recentre axes on the current SED",
+      icon: Plotly.Icons.home,
+      click: () => recentreSedView(),
+    },
+  ],
+};
+
 function drawSedFrame(t) {
   if (!state.frames) return;
   const { y, logAge } = interpFromFrames(state.frames, t);
@@ -1035,11 +1080,7 @@ function drawSedFrame(t) {
     const host = $("sed-plot");
     host._bibApplying = true;
     Promise.resolve(
-      Plotly.react("sed-plot", traces, plotLayout([xLo, xHi], [yLo, yHi]), {
-        responsive: true,
-        displaylogo: false,
-        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
-      }),
+      Plotly.react("sed-plot", traces, plotLayout([xLo, xHi], [yLo, yHi]), SED_PLOT_CONFIG),
     ).then(() => {
       bindSedViewLock(host);
       setTimeout(() => {
@@ -1634,6 +1675,9 @@ $("sl-mass").addEventListener("input", () => {
   const exp = Number.isInteger(value) ? String(value) : value.toFixed(1);
   $("out-mass").innerHTML = `10<sup>${exp}</sup>`;
   syncRangeFill($("sl-mass"));
+  // Flux scales linearly with formed mass; keep a zoomed view on the SED.
+  shiftLockedView(1, Math.pow(10, value - state.viewMassLog));
+  state.viewMassLog = value;
   if (state.series) {
     renderAuxPlots(state, logAgeFromT(clock.t));
   }
@@ -1688,7 +1732,14 @@ $("sl-rv").addEventListener("input", () => {
 });
 
 $("sl-redshift").addEventListener("input", () => {
+  const zPrev = state.redshift;
   state.redshift = zFromSlider($("sl-redshift").value);
+  // λ_obs ∝ (1+z); plotted flux ∝ distanceDimming(z)/(1+z) (see toObserved).
+  shiftLockedView(
+    (1 + state.redshift) / (1 + zPrev),
+    (distanceDimming(state.redshift) / (1 + state.redshift)) /
+      (distanceDimming(zPrev) / (1 + zPrev)),
+  );
   $("out-redshift").textContent = state.redshift.toFixed(2);
   updateCosmoWarn(logAgeFromT(clock.t));
   syncRangeFill($("sl-redshift"));
