@@ -51,7 +51,9 @@ precomputed display copy: native sampling is kept wherever it is coarser than
 the target logarithmic binning, log-spaced bins elsewhere (~2–4 k points).
 Rebinning averages flux density within bins, so broadband shapes and
 integrals are preserved; narrow spectral features are visually smoothed at
-display resolution only.
+display resolution only. The explorer SED is clipped at rest-frame 50 Å —
+BPASS atmospheres are not a useful model blueward of that — while files and
+the API still return the far UV.
 
 ## Dust extinction
 

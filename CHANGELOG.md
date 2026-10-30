@@ -6,6 +6,14 @@ All notable changes to bib are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- SSP explorer hover names the line by its colour (and “no IGM” on the
+  unattenuated ghost) instead of repeating the legend; wavelength is shown
+  in Å, not scientific notation.
+- SSP explorer SED plot starts at rest-frame 50 Å. Shorter wavelengths remain
+  in downloads and the API; the atmosphere models are not useful there.
+
 ### Fixed
 
 - SSP explorer: the IGM band label no longer doubles its parentheses

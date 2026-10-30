@@ -50,6 +50,9 @@ const DUST_FILL = "rgba(255, 180, 84, 0.08)";
 const IGM_FILL = "rgba(120, 150, 255, 0.10)";
 const GHOST_OPACITY = 0.38; // the same SED drawn without its IGM factor
 const TRAIL_DEX = 0.5; // log-age spacing of play-trail snapshots
+// Rest-frame floor for the plot: BPASS atmospheres are not a useful model below this.
+// Native files and the API still include the far UV.
+const PLOT_WL_MIN_A = 50;
 
 const state = {
   meta: null,
@@ -319,15 +322,72 @@ function liveLabel(logAge) {
   return bits.join(" · ");
 }
 
-function sedHover(extra) {
-  const xUnit = state.xNu ? "Hz" : "Å";
-  const xLab = state.xNu ? "ν" : "λ";
-  return (
-    `<b>${extra}</b>` +
-    `<br>${xLab} = %{x:.4g} ${xUnit}` +
-    `<br>F<sub>λ</sub> = %{y:.3g} L<sub>☉</sub>/Å` +
-    `<extra></extra>`
-  );
+function sedHoverLabel(color) {
+  const base = hoverLabel();
+  return { ...base, bordercolor: color };
+}
+
+/** Integer Å (or Hz in frequency mode) — never Plotly's scientific %{x:.4g}. */
+function formatWlHover(observedA) {
+  if (state.xNu) {
+    return observedA.map((a) => `${(C_A_S / a).toExponential(3)} Hz`);
+  }
+  return observedA.map((a) => `${Math.round(a)} Å`);
+}
+
+function sedHover(note) {
+  const head = note ? `${note}<br>` : "";
+  // <extra> is Plotly's colour chip — a dash so the hovered line is visible
+  // without repeating the legend. Ghosts also say "no IGM".
+  return `${head}%{text}<br>F<sub>λ</sub> = %{y:.3g} L<sub>☉</sub>/Å<extra>━</extra>`;
+}
+
+function plotWlStart(wavelength) {
+  let i = 0;
+  while (i < wavelength.length && wavelength[i] < PLOT_WL_MIN_A) i++;
+  return i;
+}
+
+function clipRest(wavelength, y, igm) {
+  const i = plotWlStart(wavelength);
+  return {
+    x: wavelength.slice(i),
+    y: y.slice(i),
+    igm: igm ? igm.slice(i) : null,
+  };
+}
+
+/** Observer-frame SED for the plot: rest λ < 50 Å dropped. */
+function observedPlot(restX, restY, z, igm) {
+  const clipped = clipRest(restX, restY, igm);
+  return toObserved(clipped.x, clipped.y, z, clipped.igm);
+}
+
+function pinPlotView(pin, t) {
+  const labeled = pinView(pin, t);
+  const restX = pin.frames?.wavelength;
+  const restY = pinRestY(pin, t);
+  if (restX && restY) {
+    const view = observedPlot(restX, restY, pinObservedZ(pin), pinIgmFactor(pin));
+    return { ...view, label: labeled.label };
+  }
+  return labeled;
+}
+
+function sedLineTrace({ uid, observedA, y, color, width, name, note, opacity }) {
+  return {
+    uid,
+    x: spectralXs(copyArr(observedA)),
+    y: copyArr(y),
+    name,
+    showlegend: false,
+    mode: "lines",
+    opacity: opacity ?? 1,
+    line: { color, width },
+    text: formatWlHover(observedA),
+    hovertemplate: sedHover(note),
+    hoverlabel: sedHoverLabel(color),
+  };
 }
 
 /* -------------------------------------------------------------------- frames */
@@ -365,10 +425,13 @@ async function loadFrames() {
 }
 
 function framesLogRange(payload) {
+  const i0 = plotWlStart(payload.wavelength || []);
   let lo = Infinity,
     hi = -Infinity;
   for (const frame of payload.frames) {
-    for (const v of frame.flux) {
+    const flux = frame.flux;
+    for (let i = i0; i < flux.length; i++) {
+      const v = flux[i];
       if (v > 0) {
         if (v < lo) lo = v;
         if (v > hi) hi = v;
@@ -771,23 +834,27 @@ function attenuationEdgeTraces() {
 }
 
 /** The SED without its IGM factor, drawn only where that factor bites (< 0.999). */
-function igmGhostTrace(restX, restY, z, igm, color, name, uid) {
+function igmGhostTrace(restX, restY, z, igm, color, uid) {
+  const clipped = clipRest(restX, restY, igm);
+  restX = clipped.x;
+  restY = clipped.y;
+  igm = clipped.igm;
   if (!igm || !(z > 0) || igm.length !== restY.length) return null;
   let last = -1;
   for (let i = 0; i < igm.length; i++) if (igm[i] < 0.999) last = i;
   if (last < 0) return null;
   const end = Math.min(restX.length, last + 3);
   const view = toObserved(restX.slice(0, end), restY.slice(0, end), z, null);
-  return {
+  return sedLineTrace({
     uid,
-    x: spectralXs(view.x),
+    observedA: view.x,
     y: view.y,
-    mode: "lines",
-    showlegend: false,
+    color,
+    width: 1,
+    name: "no IGM",
+    note: "no IGM",
     opacity: GHOST_OPACITY,
-    line: { color, width: 1 },
-    hovertemplate: sedHover(`${name} · without IGM`),
-  };
+  });
 }
 
 /** Rest-frame flux of a pin at playhead t (interpolated when age-synced, else as pinned). */
@@ -1034,7 +1101,7 @@ const SED_PLOT_CONFIG = {
 function drawSedFrame(t) {
   if (!state.frames) return;
   const { y, logAge } = interpFromFrames(state.frames, t);
-  const cur = toObserved(state.frames.wavelength, y, state.redshift, igmFactorFor(state.redshift));
+  const cur = observedPlot(state.frames.wavelength, y, state.redshift, igmFactorFor(state.redshift));
   const liveName = liveLabel(logAge);
 
   // ---- axis extents: union of current view, pins, and marker levels
@@ -1046,7 +1113,7 @@ function drawSedFrame(t) {
 
   const traces = attenuationEdgeTraces();
   for (const pin of state.pins) {
-    const view = pinView(pin, t);
+    const view = pinPlotView(pin, t);
     xMin = Math.min(xMin, view.x[0], view.x[view.x.length - 1]);
     xMax = Math.max(xMax, view.x[0], view.x[view.x.length - 1]);
     if (pin.yLog10) {
@@ -1063,41 +1130,39 @@ function drawSedFrame(t) {
         pinObservedZ(pin),
         pinIgmFactor(pin),
         pin.color,
-        view.label,
         `pin-ghost-${pin.id}`,
       );
     if (ghost) traces.push(ghost);
-    traces.push({
-      uid: `pin-${pin.id}`,
-      x: spectralXs(copyArr(view.x)),
-      y: copyArr(view.y),
-      name: view.label,
-      showlegend: false,
-      mode: "lines",
-      line: { color: pin.color, width: 1.3 },
-      hovertemplate: sedHover(view.label),
-    });
+    traces.push(
+      sedLineTrace({
+        uid: `pin-${pin.id}`,
+        observedA: view.x,
+        y: view.y,
+        color: pin.color,
+        width: 1.3,
+        name: view.label,
+      }),
+    );
   }
 
   if (state.trailOn && state.trail.length && !state.pins.length) {
     for (const snap of state.trail) {
-      const view = toObserved(
+      const view = observedPlot(
         state.frames.wavelength,
         snap.y,
         state.redshift,
         igmFactorFor(state.redshift),
       );
       const { color, width } = trailStyle(snap.logAge);
-      const trailName = `logA=${snap.logAge.toFixed(1)}`;
-      traces.push({
-        x: spectralXs(view.x),
-        y: view.y,
-        name: trailName,
-        showlegend: false,
-        mode: "lines",
-        line: { color, width },
-        hovertemplate: sedHover(trailName),
-      });
+      traces.push(
+        sedLineTrace({
+          observedA: view.x,
+          y: view.y,
+          color,
+          width,
+          name: `logA=${snap.logAge.toFixed(1)}`,
+        }),
+      );
     }
   }
 
@@ -1108,39 +1173,37 @@ function drawSedFrame(t) {
     state.redshift,
     igmFactorFor(state.redshift),
     liveColor,
-    liveName,
     "live-ghost",
   );
   if (liveGhost) traces.push(liveGhost);
-  traces.push({
-    uid: "live-sed",
-    x: spectralXs(copyArr(cur.x)),
-    y: copyArr(cur.y),
-    name: liveName,
-    showlegend: false,
-    mode: "lines",
-    line: { color: css("--brand-primary") || "#5aa9ff", width: 2.1 },
-    hovertemplate: sedHover(liveName),
-  });
+  traces.push(
+    sedLineTrace({
+      uid: "live-sed",
+      observedA: cur.x,
+      y: cur.y,
+      color: liveColor,
+      width: 2.1,
+      name: liveName,
+    }),
+  );
 
   if (wantPinSum(state)) {
     const summed = sumVisibleSed(t, cur);
     if (summed) {
-      traces.push({
-        uid: "sum-sed",
-        x: spectralXs(copyArr(summed.x)),
-        y: copyArr(summed.y),
-        name: "Σ visible spectra",
-        showlegend: false,
-        mode: "lines",
-        line: { color: SUM_COLOR, width: 2.8 },
-        hovertemplate: sedHover("Σ visible spectra"),
-      });
+      traces.push(
+        sedLineTrace({
+          uid: "sum-sed",
+          observedA: summed.x,
+          y: summed.y,
+          color: SUM_COLOR,
+          width: 2.8,
+          name: "Σ visible spectra",
+        }),
+      );
     }
   }
 
   // ---- ticked filter passbands hugging the plot floor (hidden y2 axis)
-  const xUnit = state.xNu ? "Hz" : "Å";
   for (const { key, curve } of tickedCurves()) {
     const T = normalizeTransmission(curve.transmission);
     const row = state.photFresh ? state.photRows.find((r) => r.key === key) : null;
@@ -1155,9 +1218,12 @@ function drawSedFrame(t) {
       line: { color: filterColor(curve.lambda_eff), width: flagged ? 1.6 : 1.2, dash: flagged ? "dash" : "solid" },
       fill: "tozeroy",
       fillcolor: filterColor(curve.lambda_eff, flagged ? 0.12 : 0.22),
+      text: curve.wavelength.map((a) =>
+        state.xNu ? `${(C_A_S / a).toExponential(3)} Hz` : `${Math.round(a)} Å`,
+      ),
       hovertemplate:
         `<b>${curve.display_name}</b>` +
-        `<br>%{x:.4g} ${xUnit} · T=%{y:.2f}` +
+        `<br>%{text} · T=%{y:.2f}` +
         (row ? `<br>${attenuationText(row)}` : "") +
         `<extra></extra>`,
     });
@@ -1237,33 +1303,30 @@ function restyleLiveSed(cur, logAge, t) {
   const liveName = liveLabel(logAge);
   const ys = [cur.y];
   const names = [liveName];
-  const hover = [sedHover(liveName)];
   const indices = [live];
   // Ghost copies (SED without IGM) also move with age; fall back to a full draw if absent.
-  const pushGhost = (uid, restX, restY, z, igm, name) => {
+  const pushGhost = (uid, restX, restY, z, igm) => {
     const j = gd.data.findIndex((tr) => tr.uid === uid);
-    const ghost = igmGhostTrace(restX, restY, z, igm, "#000", name, uid);
+    const ghost = igmGhostTrace(restX, restY, z, igm, "#000", uid);
     if ((j < 0) !== !ghost) return false;
     if (ghost) {
       ys.push(ghost.y);
-      names.push(name);
-      hover.push(ghost.hovertemplate);
+      names.push("no IGM");
       indices.push(j);
     }
     return true;
   };
   const liveRest = interpFromFrames(state.frames, t).y;
-  if (!pushGhost("live-ghost", state.frames.wavelength, liveRest, state.redshift, igmFactorFor(state.redshift), liveName)) {
+  if (!pushGhost("live-ghost", state.frames.wavelength, liveRest, state.redshift, igmFactorFor(state.redshift))) {
     return false;
   }
   if (state.syncPins) {
     for (const pin of state.pins) {
       const j = gd.data.findIndex((tr) => tr.uid === `pin-${pin.id}`);
       if (j < 0) return false;
-      const view = pinView(pin, t);
+      const view = pinPlotView(pin, t);
       ys.push(view.y);
       names.push(view.label);
-      hover.push(sedHover(view.label));
       indices.push(j);
       const restY = pinRestY(pin, t);
       if (
@@ -1274,7 +1337,6 @@ function restyleLiveSed(cur, logAge, t) {
           restY,
           pinObservedZ(pin),
           pinIgmFactor(pin),
-          view.label,
         )
       ) {
         return false;
@@ -1288,10 +1350,9 @@ function restyleLiveSed(cur, logAge, t) {
     if (!summed) return false;
     ys.push(summed.y);
     names.push("Σ visible spectra");
-    hover.push(sedHover("Σ visible spectra"));
     indices.push(sumIdx);
   }
-  Plotly.restyle(gd, { y: ys, name: names, hovertemplate: hover }, indices);
+  Plotly.restyle(gd, { y: ys, name: names }, indices);
   renderColorKey(logAge);
   return true;
 }
@@ -1301,7 +1362,7 @@ let lastSedDrawMs = 0;
 function renderFrame(t, initial = false) {
   if (!state.frames) return;
   const { y, w, logAge } = interpFromFrames(state.frames, t);
-  const cur = toObserved(state.frames.wavelength, y, state.redshift, igmFactorFor(state.redshift));
+  const cur = observedPlot(state.frames.wavelength, y, state.redshift, igmFactorFor(state.redshift));
   updateAgeChrome(t, w);
 
   const playing = clock.playing;
