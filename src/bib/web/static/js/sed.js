@@ -322,24 +322,85 @@ function liveLabel(logAge) {
   return bits.join(" · ");
 }
 
-function sedHoverLabel(color) {
-  const base = hoverLabel();
-  return { ...base, bordercolor: color };
-}
-
-/** Integer Å (or Hz in frequency mode) — never Plotly's scientific %{x:.4g}. */
-function formatWlHover(observedA) {
-  if (state.xNu) {
-    return observedA.map((a) => `${(C_A_S / a).toExponential(3)} Hz`);
+/** Plotly named dashes → SVG stroke-dasharray, scaled by line width. */
+function dashArray(dash, width) {
+  const w = Math.max(Number(width) || 2, 1);
+  switch (dash) {
+    case "dot":
+      return `${w} ${2 * w}`;
+    case "dash":
+      return `${4 * w} ${2 * w}`;
+    case "longdash":
+      return `${8 * w} ${2 * w}`;
+    case "dashdot":
+      return `${4 * w} ${2 * w} ${w} ${2 * w}`;
+    default:
+      return null;
   }
-  return observedA.map((a) => `${Math.round(a)} Å`);
 }
 
-function sedHover(note) {
-  const head = note ? `${note}<br>` : "";
-  // <extra> is Plotly's colour chip — a dash so the hovered line is visible
-  // without repeating the legend. Ghosts also say "no IGM".
-  return `${head}%{text}<br>F<sub>λ</sub> = %{y:.3g} L<sub>☉</sub>/Å<extra>━</extra>`;
+function sedLineSwatch(color, width, dash, opacity) {
+  const w = Math.max(Number(width) || 2, 1.2);
+  const dashAttr = dashArray(dash, w);
+  const op = opacity == null ? 1 : opacity;
+  return (
+    `<svg class="sed-hover-swatch" width="40" height="12" viewBox="0 0 40 12" aria-hidden="true">` +
+    `<line x1="1" y1="6" x2="39" y2="6" stroke="${color}" stroke-width="${w}" ` +
+    `stroke-linecap="round"${dashAttr ? ` stroke-dasharray="${dashAttr}"` : ""} ` +
+    `opacity="${op}"/></svg>`
+  );
+}
+
+function formatHoverWl(xPlotted) {
+  if (state.xNu) return `${Number(xPlotted).toExponential(3)} Hz`;
+  return `${Math.round(xPlotted)} Å`;
+}
+
+function formatHoverFlux(y) {
+  if (y == null || !Number.isFinite(y)) return "—";
+  return Number(y).toPrecision(3);
+}
+
+function ensureSedHoverTip() {
+  let el = $("sed-hover-tip");
+  if (el) return el;
+  el = document.createElement("div");
+  el.id = "sed-hover-tip";
+  el.className = "sed-hover-tip";
+  el.hidden = true;
+  document.body.appendChild(el);
+  return el;
+}
+
+function hideSedHoverTip() {
+  const el = $("sed-hover-tip");
+  if (el) el.hidden = true;
+}
+
+function showSedHoverTip(pt, mouse) {
+  const tr = pt.data;
+  const meta = tr?.meta || pt.fullData?.meta;
+  if (!meta?.sedLine) {
+    hideSedHoverTip();
+    return;
+  }
+  const line = tr.line || {};
+  const note = meta.note ? `<span class="sed-hover-note">${meta.note}</span>` : "";
+  const el = ensureSedHoverTip();
+  el.innerHTML =
+    `<div class="sed-hover-legend">${sedLineSwatch(line.color, line.width, line.dash, tr.opacity)}${note}</div>` +
+    `<div>${formatHoverWl(pt.x)}</div>` +
+    `<div>F<sub>λ</sub> = ${formatHoverFlux(pt.y)} L<sub>☉</sub>/Å</div>`;
+  el.hidden = false;
+  const pad = 14;
+  let left = (mouse?.clientX ?? 0) + pad;
+  let top = (mouse?.clientY ?? 0) + pad;
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  if (left + w > window.innerWidth - 8) left = (mouse?.clientX ?? 0) - w - pad;
+  if (top + h > window.innerHeight - 8) top = (mouse?.clientY ?? 0) - h - pad;
+  el.style.left = `${Math.max(8, left)}px`;
+  el.style.top = `${Math.max(8, top)}px`;
 }
 
 function plotWlStart(wavelength) {
@@ -374,7 +435,7 @@ function pinPlotView(pin, t) {
   return labeled;
 }
 
-function sedLineTrace({ uid, observedA, y, color, width, name, note, opacity }) {
+function sedLineTrace({ uid, observedA, y, color, width, name, note, opacity, dash }) {
   return {
     uid,
     x: spectralXs(copyArr(observedA)),
@@ -383,10 +444,9 @@ function sedLineTrace({ uid, observedA, y, color, width, name, note, opacity }) 
     showlegend: false,
     mode: "lines",
     opacity: opacity ?? 1,
-    line: { color, width },
-    text: formatWlHover(observedA),
-    hovertemplate: sedHover(note),
-    hoverlabel: sedHoverLabel(color),
+    line: { color, width, dash: dash || "solid" },
+    hoverinfo: "none",
+    meta: { sedLine: true, note: note || "" },
   };
 }
 
@@ -1046,6 +1106,7 @@ function bindSedViewLock(host) {
   if (!host || host._bibViewLock || typeof host.on !== "function") return;
   host._bibViewLock = true;
   host.on("plotly_relayout", (ev) => {
+    hideSedHoverTip();
     if (!ev || host._bibApplying) return;
     const box = { xaxis: state.userX, yaxis: state.userY };
     noteAxisLock(ev, box, "xaxis");
@@ -1053,6 +1114,16 @@ function bindSedViewLock(host) {
     state.userX = box.xaxis;
     state.userY = box.yaxis;
   });
+  host.on("plotly_hover", (ev) => {
+    const pt = ev?.points?.[0];
+    if (!pt) {
+      hideSedHoverTip();
+      return;
+    }
+    showSedHoverTip(pt, ev.event);
+  });
+  host.on("plotly_unhover", hideSedHoverTip);
+  host.addEventListener("mouseleave", hideSedHoverTip);
 }
 
 /** Drop any zoom/pan lock so the next draw frames the current SED again. */
@@ -1100,6 +1171,7 @@ const SED_PLOT_CONFIG = {
 
 function drawSedFrame(t) {
   if (!state.frames) return;
+  hideSedHoverTip();
   const { y, logAge } = interpFromFrames(state.frames, t);
   const cur = observedPlot(state.frames.wavelength, y, state.redshift, igmFactorFor(state.redshift));
   const liveName = liveLabel(logAge);
