@@ -53,8 +53,9 @@ def test_about_redirects_to_acknowledgement(client):
     assert response.headers["location"].endswith("/#acknowledgement")
     html = client.get("/").text
     assert 'id="acknowledgement"' in html
-    assert "Cursor" in html
+    assert "generative-AI" in html
     assert "late 2026" in html
+    assert "human verification" in html
 
 
 def test_tutorial_mentions_key_concepts(client):
@@ -62,7 +63,22 @@ def test_tutorial_mentions_key_concepts(client):
     for phrase in ("simple stellar population", "Roche-lobe", "Chabrier", "OpenDyslexic"):
         assert phrase in html, phrase
     assert 'id="imf-plot"' in html
+    assert 'id="dust-plot"' in html
+    assert 'id="igm-plot"' in html
+    assert "dust_extinction" in html
+    assert "intergalactic medium" in html
+    assert "headline BPASS" not in html
     assert "Ten minutes of background" not in html
+
+
+def test_footer_reports_package_version_and_both_bpass_mirrors(client):
+    from bib import __version__
+
+    html = client.get("/").text
+    assert f"v{__version__}" in html
+    assert "Auckland mirror" in html
+    assert "Warwick mirror" in html
+    assert "bpass.auckland.ac.nz" in html
 
 
 def test_data_page_demo_note_follows_synthetic_rows(client, monkeypatch):

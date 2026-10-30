@@ -28,6 +28,11 @@ All notable changes to bib are recorded here. The format follows
   legend is a single column to the right of the axes so it no longer
   sits on the curves. A lower panel shows each IMF as a ratio to the
   BPASS fiducial (`imf135_300`) on the same mass axis.
+- Tutorial rewritten around the current SSP Explorer: IGM is its own
+  section (not under dust); diagnostic plots for dust (each law, only
+  in its published window, R_V=3.1 where adjustable) and IGM (z=3,
+  both models). Footer names Auckland and Warwick BPASS mirrors and
+  still prints the package version.
 
 ## [1.0.0] — 2026-10-27
 

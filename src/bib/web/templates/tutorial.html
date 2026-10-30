@@ -3,175 +3,194 @@
 {% block content %}
 <div class="prose">
 
-<h1>A quick introduction to stellar population models and the explorer tools</h1>
-<p class="page-kicker">What an SSP is, and how to read the explorers.</p>
+<h1>Simple stellar populations, and how to read them here</h1>
+<p class="page-kicker">A short guide to the models behind the SSP Explorer, and to the knobs on the page.</p>
 
-<h2>1 · What population synthesis does</h2>
+<h2>1 · What an SSP is</h2>
 <p>
-  Take one star and physics can tell you how it evolves: how bright and how hot it is at
-  every age. A galaxy, though, contains billions of stars of different masses, born together
-  and evolving at wildly different speeds. <strong>Population synthesis</strong> answers the
-  practical question: <em>if a million solar masses of gas turns into stars today, what does
-  that population look like after 1&nbsp;Myr? 100&nbsp;Myr? 10&nbsp;Gyr?</em>
-  It evolves a grid of stellar models, weights them by how many stars of each mass are born,
-  and sums their light.
+  A single star’s life is a solved problem, in outline: mass and composition fix how
+  bright and how hot it is at every age. A galaxy is not one star. It is a mixture of
+  masses, born together, ageing at very different rates. <strong>Population synthesis</strong>
+  asks a practical question: if a million solar masses of gas turns into stars today,
+  what does that light look like after a million years, a hundred million, ten billion?
 </p>
 <p>
-  The result for a single burst of star formation is a <strong>simple stellar population
-  (SSP)</strong>: every star has the same age and initial composition, and only the stellar
-  mass varies. SSPs are the LEGO bricks of galaxy modelling — any star-formation history can
-  be assembled from them. Everything in the <a href="/ssp">SSP Explorer</a> is an SSP,
-  normalised to 10<sup>6</sup>&nbsp;M<sub>☉</sub> formed, tabulated at 51 ages spaced by
-  0.1&nbsp;dex in log(age) from 10<sup>6</sup> to 10<sup>11</sup> years.
+  The answer for an instantaneous burst is a <strong>simple stellar population (SSP)</strong>:
+  every star has the same age and the same initial composition; only the birth mass varies.
+  More complicated star-formation histories are sums of SSPs. Everything in the
+  <a href="/ssp">SSP Explorer</a> is one SSP, normalised to 10<sup>6</sup>&nbsp;M<sub>☉</sub>
+  formed, at 51 ages from 1&nbsp;Myr to 100&nbsp;Gyr (0.1&nbsp;dex steps in log age).
 </p>
 
-<h2>2 · The knobs you can turn</h2>
-<h3>Initial mass function (IMF)</h3>
+<h2>2 · Choosing a population</h2>
+<h3>Initial mass function</h3>
 <p>
-  The IMF sets how many stars of each mass are born. Massive stars are rare but dominate the
-  ultraviolet and ionizing light; low-mass stars are numerous and lock up most of the mass.
-  BPASS quotes the high-mass slope <em>α</em> of ξ(log<sub>10</sub>&nbsp;M) — number of stars
-  per decade in mass. Salpeter is <em>α</em>&nbsp;=&nbsp;1.35, which is a straight line of
-  slope −2.35 on the dN/dM plot below. A larger <em>α</em> means a steeper drop and fewer
-  massive stars.
+  The IMF says how many stars of each mass are born. Massive stars are rare and dominate
+  the ultraviolet and the ionizing continuum; low-mass stars are common and lock up most
+  of the mass. BPASS quotes the high-mass slope <em>α</em> of ξ(log<sub>10</sub>&nbsp;M) —
+  the number of stars per decade in mass. Salpeter is <em>α</em>&nbsp;=&nbsp;1.35, a
+  straight line of slope −2.35 on the plot below. A larger <em>α</em> is a steeper drop
+  and fewer massive stars.
 </p>
 <p>
-  Two shapes appear in this tool. The <strong>broken power-law</strong> (BPASS default, in
-  the spirit of Kroupa 2001) is shallower below 0.5&nbsp;M<sub>☉</sub> and Salpeter-like
+  Two shapes are loaded here. The <strong>broken power-law</strong> (the BPASS default,
+  in the spirit of Kroupa 2001) is shallower below 0.5&nbsp;M<sub>☉</sub> and Salpeter-like
   above. <strong>Chabrier</strong> (2003) uses a log-normal turnover at low mass and the
   same high-mass slope, so it has fewer faint M dwarfs but a similar budget of O and B
-  stars. <em>M</em><sub>max</sub> (100 or 300&nbsp;M<sub>☉</sub>) only changes the rarest,
-  hottest stars. Steeper or flatter high-mass slopes exist in the full release
-  (<em>α</em>&nbsp;=&nbsp;1.00 or 1.70). Compare them in the
-  <a href="/ssp">SSP Explorer</a> — the UV and ionizing panels move more than the optical.
+  stars. <em>M</em><sub>max</sub> of 100 or 300&nbsp;M<sub>☉</sub> only changes the rarest,
+  hottest stars. The v2.2.1 grid also includes steeper and flatter high-mass slopes
+  (<em>α</em>&nbsp;=&nbsp;1.00 and 1.70). In the explorer, the ultraviolet and ionizing
+  panels move more than the optical when you change the IMF.
 </p>
 <div id="imf-plot" class="plot-host compact" style="margin: 0.8rem 0 0.35rem;"></div>
 <p class="plot-note" id="imf-plot-note">
-  Differential number of stars per solar mass for the IMFs loaded here, matched at
-  1&nbsp;M<sub>☉</sub>. Power-law pieces are straight on this log–log plot; Chabrier
-  turns over below ~1&nbsp;M<sub>☉</sub>. The lower panel is the ratio to the BPASS
-  fiducial (broken power-law, α=1.35, M<sub>max</sub>=300&nbsp;M<sub>☉</sub>) so
-  differences that sit on top of each other above are easy to see; a dotted line
-  marks equality. Hover a Data &amp; API cell for the raw filename tag.
-</p>
-<h3>Metallicity</h3>
-<p>
-  <code>zXXX</code> labels give the initial mass fraction of elements heavier than helium:
-  <code>z020</code> means Z&nbsp;=&nbsp;0.020 (roughly solar), <code>z002</code> is a tenth
-  of that, and the grid reaches down to <code>zem5</code> (Z&nbsp;=&nbsp;10<sup>−5</sup>).
-  Metal-poor stars are hotter and more compact, their winds are weaker, and their populations
-  produce far more ionizing photons — a key ingredient for understanding the early Universe.
-</p>
-<h3>Alpha enhancement (v2.3)</h3>
-<p>
-  Not all "metals" are alike. Core-collapse supernovae make mostly <em>alpha elements</em>
-  (O, Ne, Mg, Si…), while type Ia supernovae contribute iron later. Old and rapidly formed
-  populations are therefore <em>alpha-enhanced</em>: more alpha elements relative to iron
-  than the Sun. The BPASS v2.3 release provides SEDs at five abundance mixes,
-  Δ(log&nbsp;α/Fe) from −0.2 to +0.6, at the <em>same total Z</em> — so an alpha-rich
-  spectrum is also an iron-poor one. Select a v2.3 population in the SSP Explorer and the
-  alpha dropdown activates.
-</p>
-<h3>Single vs. binary populations</h3>
-<p>
-  The headline BPASS feature. Most massive stars are born with a close companion, and
-  interaction is the rule, not the exception: a star that swells into a giant can spill its
-  envelope onto its companion (<em>Roche-lobe overflow</em>), be stripped down to its hot
-  helium core, spin up or rejuvenate its partner, or plunge into a shared
-  <em>common envelope</em>. Consequences you can see in this tool:
-</p>
-<ul>
-  <li>Stripped stars keep binary populations <strong>bluer and harder-ionizing for far
-      longer</strong> — single-star populations fade in the UV after ~10&nbsp;Myr, binary ones
-      don't. Compare <code>sin</code> vs <code>bin</code> at fixed age in the SSP Explorer.</li>
-  <li>Mass gainers and mergers look <strong>younger than they are</strong> (blue
-      stragglers).</li>
-  <li>Supernovae and compact-object mergers happen <strong>later and in different
-      numbers</strong> than single-star models predict.</li>
-</ul>
-<h3>Dust extinction</h3>
-<p>
-  Choosing a curve and E(B−V) extinguishes the SED. Each wavelength is multiplied
-  by 10<sup>−0.4 A<sub>λ</sub></sup>, as if a dust screen sat in front of the population.
-  That is not attenuation through a mixture of stars and dust, and the light removed
-  from the spectrum is not reprocessed into the infrared.
-  The four curves are CCM89 and F99 (Milky Way), Gordon 03 (SMC bar) and Calzetti 00
-  (starbursts), with R<sub>V</sub> where the curve allows it.
-  Calzetti et al. published their curve as an attenuation law; here it is used the same
-  way as the others, as a screen.
-  Outside a curve's published wavelength range nothing is applied — the spectrum is left
-  as it is rather than extrapolated — and the region is shaded, so you can see where the
-  extinction stops. Photometry through such passbands is flagged in the table.
-  At <em>z</em> &gt; 0 you can also switch on <strong>IGM attenuation</strong>: the
-  observer-frame spectrum is multiplied by the mean transmission of intervening neutral
-  hydrogen bluewards of Lyα(1+z) (Inoue et al. 2014 or Madau 1995) — a sightline
-  average, without a damping wing. Every magnitude states whether it is
-  dust-extinguished, IGM-attenuated, both or unattenuated.
+  Number of stars per solar mass, matched at 1&nbsp;M<sub>☉</sub>. Power-law pieces are
+  straight on this log–log plot; Chabrier turns over below about a solar mass. The lower
+  panel is the ratio to the BPASS fiducial (broken power-law, α=1.35,
+  M<sub>max</sub>=300&nbsp;M<sub>☉</sub>). A dotted line marks equality. The same slope
+  shares a colour; M<sub>max</sub>=300 is dashed.
 </p>
 
-<h2>3 · Using the SSP Explorer</h2>
+<h3>Metallicity</h3>
+<p>
+  The <em>z</em> labels are the initial mass fraction in elements heavier than helium.
+  <em>z020</em> is Z&nbsp;=&nbsp;0.020 (about solar in the BPASS convention);
+  <em>z002</em> is a tenth of that; the grid reaches <em>zem5</em>
+  (Z&nbsp;=&nbsp;10<sup>−5</sup>). Metal-poor stars are hotter and more compact, their
+  winds are weaker, and the population produces more ionizing photons — important for
+  the early Universe.
+</p>
+
+<h3>Alpha enhancement (v2.3)</h3>
+<p>
+  Not all metals are alike. Core-collapse supernovae make mostly alpha elements
+  (O, Ne, Mg, Si, …); Type&nbsp;Ia supernovae add iron later. Old or rapidly formed
+  populations are therefore alpha-enhanced relative to the Sun. The v2.3 grids give
+  SEDs at five mixes, Δ(log&nbsp;α/Fe) from −0.2 to +0.6, at the <em>same total Z</em>
+  — so an alpha-rich spectrum is also iron-poor. Choose a v2.3 population in the
+  explorer and the alpha menu becomes active.
+</p>
+
+<h3>Single stars and binaries</h3>
+<p>
+  Most massive stars are born with a close companion. Interaction is then the rule:
+  a giant can spill its envelope onto its partner (Roche-lobe overflow), be stripped
+  to a hot helium core, spin up or rejuvenate the companion, or share a common envelope.
+  In the explorer you can compare single-star and binary populations at the same age,
+  IMF and metallicity. Binary populations stay bluer and harder-ionizing for much
+  longer — single-star light fades in the ultraviolet after about 10&nbsp;Myr, binary
+  light does not. Mass gainers and mergers can look younger than they are. Supernovae
+  and compact-object mergers occur later, and in different numbers, than single-star
+  models predict.
+</p>
+
+<h2>3 · Dust in front of the population</h2>
+<p>
+  Dust is a screen in front of the SSP, not a mixture of stars and dust. Each
+  wavelength is multiplied by 10<sup>−0.4 A<sub>λ</sub></sup>. Light taken out of
+  the spectrum is not put back into the infrared. Four curves are offered:
+  Cardelli, Clayton &amp; Mathis (1989) and Fitzpatrick (1999) for the Milky Way,
+  Gordon et al. (2003) for the SMC bar, and Calzetti et al. (2000) for starbursts.
+  Calzetti published an attenuation law; here it is used as a screen, like the others.
+</p>
+<p>
+  Each curve is only defined over a published wavelength window. Outside that window
+  nothing is applied — the spectrum is left as it is, rather than extrapolated.
+  Photometry through a filter that sits outside, or straddles, the window is labelled
+  in the table. The Milky Way and SMC curves are evaluated with the
+  <a href="https://dust-extinction.readthedocs.io" target="_blank" rel="noopener">dust_extinction</a>
+  package; Calzetti is the published polynomial.
+</p>
+<div id="dust-plot" class="plot-host compact" style="margin: 0.8rem 0 0.35rem;"></div>
+<p class="plot-note" id="dust-plot-note">
+  The same 10&nbsp;Myr, solar-metallicity, binary SSP (the BPASS fiducial IMF) with
+  E(B−V)&nbsp;=&nbsp;0.3. R<sub>V</sub>&nbsp;=&nbsp;3.1 where the curve allows it;
+  Calzetti and the SMC bar keep their published values (4.05 and 2.74). Each
+  extinguished spectrum is drawn only where that law is defined.
+</p>
+
+<h2>4 · Looking through the intergalactic medium</h2>
+<p>
+  At redshift <em>z</em>&nbsp;&gt;&nbsp;0 the explorer stretches wavelengths by (1+<em>z</em>)
+  and dims the plotted flux to the luminosity distance. Neutral hydrogen along the
+  line of sight then absorbs light blueward of Lyα in the observer frame. That is a
+  separate knob from dust: dust acts on the rest-frame spectrum; IGM absorption acts
+  afterwards, on what a distant observer sees.
+</p>
+<p>
+  Two mean sightline averages are offered — Inoue et al. (2014), the default, and
+  Madau (1995), kept for comparison with older work. Neither is a particular
+  sightline, and neither includes a damping wing from a still-neutral IGM at
+  <em>z</em>&nbsp;≳&nbsp;6. Photometry through a filter that reaches below
+  Lyα(1+<em>z</em>) is labelled IGM when the correction is on, and
+  <em>IGM ignored</em> when it is off.
+</p>
+<div id="igm-plot" class="plot-host compact" style="margin: 0.8rem 0 0.35rem;"></div>
+<p class="plot-note" id="igm-plot-note">
+  The same fiducial SSP at 10&nbsp;Myr, placed at <em>z</em>&nbsp;=&nbsp;3, with no IGM
+  correction and with each of the two models. The dotted line is observed Lyα.
+  The forest and the Lyman continuum sit to the left of that line.
+</p>
+
+<h2>5 · Using the SSP Explorer</h2>
 <ol>
-  <li><strong>Pick a population</strong> — release, single/binary, IMF, metallicity (and alpha
-      mix for v2.3) from the sidebar dropdowns.</li>
-  <li><strong>Scrub through age</strong> with the slider, or press <strong>▶ play</strong> and
-      watch the blue side collapse and the red giants take over. Toggle extra panels
-      (star counts, ionizing photons, SN rates, surviving mass, yields) — they all follow
-      the same playbar. The speed slider covers decades of log-age per second; frames
-      between grid ages are interpolated for smoothness (see the honesty note below).</li>
-  <li><strong>Pin what you want to keep</strong>. "Pin SSP on plots" freezes the current SED slice
-      and overlays that population's history on every visible timeseries plot — then
-      change any control and compare. Pin one (or more) and tick <strong>sum visible spectra</strong>
-      to add the live SSP to every pin at the ages shown: a mix of visible spectra,
-      not a star-formation history. <strong>Sync ages</strong> locks every overlay
-      to the playhead; <strong>sync redshifts</strong> shows every overlay at the
-      live z.</li>
-  <li><strong>Extinguish the SED, or rescale mass</strong> — mass is a pure vertical shift
-      (spectra and star counts scale linearly with formed mass). Dust extinction multiplies
-      the SED by the curve and leaves the other panels alone. Removed light is not reprocessed.</li>
-  <li><strong>Overlay filters and read magnitudes</strong>. The photometry table (collapsible,
-      below the SED) gives AB magnitudes (absolute, i.e. at 10&nbsp;pc) through the bundled
-      filter sets for the live SED and every pinned one. Upload any two-column
-      wavelength/transmission file to get magnitudes through your own filter.</li>
-  <li><strong>Export</strong> the SED plot as PNG, or the spectrum as CSV/JSON at full native
-      resolution.</li>
+  <li><strong>Pick a population</strong> — release, single or binary, IMF, metallicity,
+      and (for v2.3) the alpha mix.</li>
+  <li><strong>Move in age</strong> with the slider, or press play. Extra panels
+      (star counts, ionizing photons, supernova rates, surviving mass, yields) share
+      the same age. Frames between tabulated ages are interpolated for the eye only;
+      numbers you read out are always at true grid ages.</li>
+  <li><strong>Mass</strong> is a vertical shift: spectra and star counts scale with
+      formed mass. <strong>Redshift</strong> stretches the SED and switches photometry
+      from absolute to apparent AB magnitudes.</li>
+  <li><strong>Pin</strong> a population to keep it on the plots while you change the
+      live one. <strong>Sync ages</strong> and <strong>sync redshifts</strong> lock
+      every overlay to the live age or the live <em>z</em>. Dust and mass stay as they
+      were when you pinned. Summing visible spectra adds the live SSP to every pin at
+      the ages shown — a mix of spectra, not a star-formation history.</li>
+  <li><strong>Photometry</strong> is for the live SSP. Tick a filter to overlay its
+      passband. The <em>Correction applied</em> column uses short pills: Dust, IGM, or
+      None, with a warning when a requested correction could not be fully applied in
+      that band.</li>
+  <li><strong>Export</strong> the SED plot as a PNG, or the spectrum as CSV or JSON at
+      full native resolution. For tables with units and a query header, use
+      <a href="/request">Fetch data</a>.</li>
 </ol>
 
 <div class="card">
-  <h3>A note on scientific honesty</h3>
+  <h3>What is and is not model output</h3>
   <p class="small">
-    Animation frames <em>between</em> BPASS grid ages are linear interpolations added
-    purely for visual smoothness — they are not model output. Every number you can read
-    out, tabulate or download (photometry tables, CSV/JSON exports) is evaluated at true
-    grid points only.
-    {% if has_synthetic %}And while the <span class="badge warn">synthetic demo</span> banner
-    is up, the loaded data are toy shapes for exploring the interface — ingest real BPASS
-    products before drawing any conclusions.{% endif %}
+    Animation frames between BPASS grid ages are linear interpolations for visual
+    smoothness. Photometry, downloads and the numbers in the tables are evaluated at
+    tabulated ages only.
+    {% if has_synthetic %}While the <span class="badge warn">synthetic demo</span> banner
+    is showing, the loaded data are shapes for exploring the interface — ingest BPASS
+    products before drawing scientific conclusions.{% endif %}
   </p>
 </div>
 
-<h2>4 · Units and conventions</h2>
+<h2>6 · Units</h2>
 <ul>
-  <li>SED flux: solar luminosities per angstrom (L<sub>☉</sub>/Å) for a population of
-      10<sup>6</sup>&nbsp;M<sub>☉</sub> formed, rescalable in the UI; wavelengths in Å
-      (1–100,000&nbsp;Å at 1&nbsp;Å resolution in the real data).</li>
-  <li>Ages: log<sub>10</sub>(age/yr) = 6.0 … 11.0 in steps of 0.1 (51 bins).</li>
-  <li>Magnitudes computed here: AB system, absolute (10&nbsp;pc), photon-weighted
-      for every filter. BPASS's own colour tables are in Vega magnitudes for the
-      classic bands.</li>
-  <li>Metallicity Z: initial mass fraction in metals; BPASS takes Z<sub>☉</sub> = 0.020.</li>
+  <li>SED flux: solar luminosities per angstrom (L<sub>☉</sub>/Å) for
+      10<sup>6</sup>&nbsp;M<sub>☉</sub> formed, rescalable; wavelengths in Å
+      (1–100,000&nbsp;Å at 1&nbsp;Å in the published grid).</li>
+  <li>Ages: log<sub>10</sub>(age/yr) from 6.0 to 11.0 in steps of 0.1 (51 bins).</li>
+  <li>Magnitudes computed here: AB, absolute at 10&nbsp;pc when <em>z</em>&nbsp;=&nbsp;0,
+      photon-weighted. BPASS’s own colour tables are Vega magnitudes for the classic bands.</li>
+  <li>Metallicity Z: initial mass fraction in metals; BPASS takes Z<sub>☉</sub>&nbsp;=&nbsp;0.020.</li>
 </ul>
 
-<h2>5 · Reading list</h2>
+<h2>7 · Further reading</h2>
 <ul class="cites">
   <li><a href="https://bpass.auckland.ac.nz" target="_blank" rel="noopener">BPASS at Auckland</a>
       and the <a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/"
-      target="_blank" rel="noopener">Warwick mirror</a> — official data releases and news.</li>
+      target="_blank" rel="noopener">Warwick mirror</a> — data releases and news.</li>
   <li>The v2.2 user manual
       (<a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/bpassv2.2_manual-arial.pdf"
       target="_blank" rel="noopener">Arial</a> ·
       <a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/bpassv2.2_manual_accessible.pdf"
-      target="_blank" rel="noopener">accessible/OpenDyslexic</a>) — file formats, model
-      physics, caveats. Strongly recommended before using data in anger.</li>
+      target="_blank" rel="noopener">accessible/OpenDyslexic</a>) — file formats, physics,
+      caveats. Worth reading before using the data in a paper.</li>
   <li>The v2.3 manual
       (<a href="https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/bpassv2p3/bpassv2.3_manual.pdf"
       target="_blank" rel="noopener">Arial</a> ·
@@ -185,11 +204,11 @@
       <a href="https://ui.adsabs.harvard.edu/abs/2022MNRAS.512.5329B" target="_blank" rel="noopener">ADS</a>.</li>
   <li><a href="https://heloises.github.io/hoki/intro.html" target="_blank" rel="noopener">hoki</a>
       (Stevance, Eldridge &amp; Stanway 2020, JOSS) — the Python package for working with
-      BPASS files programmatically; the natural next step after this sandbox.</li>
+      BPASS files directly.</li>
 </ul>
 
 <div class="cta-row">
-  <a class="btn primary" href="/ssp">Try the SSP Explorer</a>
+  <a class="btn primary" href="/ssp">Open the SSP Explorer</a>
 </div>
 
 </div>
@@ -197,5 +216,5 @@
 
 {% block scripts %}
 <script src="/static/vendor/plotly-4.1.0.min.js"></script>
-<script type="module" src="/static/js/tutorial-imf.js?v=3"></script>
+<script type="module" src="/static/js/tutorial-plots.js?v=1"></script>
 {% endblock %}
