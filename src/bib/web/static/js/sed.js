@@ -340,12 +340,12 @@ function dashArray(dash, width) {
 }
 
 function sedLineSwatch(color, width, dash, opacity) {
-  const w = Math.max(Number(width) || 2, 1.2);
+  const w = Math.max((Number(width) || 2) * 1.15, 2.4);
   const dashAttr = dashArray(dash, w);
   const op = opacity == null ? 1 : opacity;
   return (
-    `<svg class="sed-hover-swatch" width="40" height="12" viewBox="0 0 40 12" aria-hidden="true">` +
-    `<line x1="1" y1="6" x2="39" y2="6" stroke="${color}" stroke-width="${w}" ` +
+    `<svg class="sed-hover-swatch" width="56" height="16" viewBox="0 0 56 16" aria-hidden="true">` +
+    `<line x1="2" y1="8" x2="54" y2="8" stroke="${color}" stroke-width="${w}" ` +
     `stroke-linecap="round"${dashAttr ? ` stroke-dasharray="${dashAttr}"` : ""} ` +
     `opacity="${op}"/></svg>`
   );

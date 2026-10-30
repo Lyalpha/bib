@@ -344,21 +344,21 @@ table.data tbody tr:hover { background: var(--brand-surface-2); }
   position: fixed;
   z-index: 40;
   pointer-events: none;
-  background: var(--brand-bg);
+  background: var(--brand-surface, var(--brand-bg));
   color: var(--brand-text);
   border: 1px solid rgba(154, 167, 199, 0.28);
   border-radius: 6px;
-  padding: 0.4rem 0.55rem 0.45rem;
+  padding: 0.45rem 0.65rem 0.5rem;
   font-size: 0.8rem;
   line-height: 1.35;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  min-width: 7.5rem;
+  min-width: 8.5rem;
 }
 .sed-hover-legend {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.2rem;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 .sed-hover-swatch { display: block; flex: 0 0 auto; }
 .sed-hover-note { color: var(--brand-muted); font-size: 0.75rem; }
