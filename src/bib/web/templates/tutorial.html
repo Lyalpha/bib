@@ -49,8 +49,10 @@
 <p class="plot-note" id="imf-plot-note">
   Differential number of stars per solar mass for the IMFs loaded here, matched at
   1&nbsp;M<sub>☉</sub>. Power-law pieces are straight on this log–log plot; Chabrier
-  turns over below ~1&nbsp;M<sub>☉</sub>. Hover a Data &amp; API cell for the raw
-  filename tag.
+  turns over below ~1&nbsp;M<sub>☉</sub>. The lower panel is the ratio to the BPASS
+  fiducial (broken power-law, α=1.35, M<sub>max</sub>=300&nbsp;M<sub>☉</sub>) so
+  differences that sit on top of each other above are easy to see; a dotted line
+  marks equality. Hover a Data &amp; API cell for the raw filename tag.
 </p>
 <h3>Metallicity</h3>
 <p>
@@ -195,5 +197,5 @@
 
 {% block scripts %}
 <script src="/static/vendor/plotly-4.1.0.min.js"></script>
-<script type="module" src="/static/js/tutorial-imf.js?v=2"></script>
+<script type="module" src="/static/js/tutorial-imf.js?v=3"></script>
 {% endblock %}

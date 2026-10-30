@@ -300,6 +300,7 @@ table.data tbody tr:hover { background: var(--brand-surface-2); }
 
 .plot-host { width: 100%; min-height: 420px; border-radius: 12px; overflow: hidden; }
 .plot-host.compact { min-height: 320px; overflow: visible; }
+.plot-host.compact.imf-stack { min-height: 520px; }
 
 .sed-with-key {
   display: grid;

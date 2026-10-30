@@ -26,7 +26,8 @@ All notable changes to bib are recorded here. The format follows
   *No IGM* renamed *IGM ignored*.
 - Tutorial IMF plot: same slope shares a colour, M_max=300 is dashed;
   legend is a single column to the right of the axes so it no longer
-  sits on the curves.
+  sits on the curves. A lower panel shows each IMF as a ratio to the
+  BPASS fiducial (`imf135_300`) on the same mass axis.
 
 ## [1.0.0] — 2026-10-27
 
