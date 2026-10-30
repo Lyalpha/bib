@@ -445,7 +445,12 @@ function sedLineTrace({ uid, observedA, y, color, width, name, note, opacity, da
     mode: "lines",
     opacity: opacity ?? 1,
     line: { color, width, dash: dash || "solid" },
-    hoverinfo: "none",
+    hovertemplate: "<extra></extra>",
+    hoverlabel: {
+      bgcolor: "rgba(0,0,0,0)",
+      bordercolor: "rgba(0,0,0,0)",
+      font: { size: 1, color: "rgba(0,0,0,0)" },
+    },
     meta: { sedLine: true, note: note || "" },
   };
 }
