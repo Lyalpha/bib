@@ -738,6 +738,116 @@ function filterMarkerColor(lambdaEff) {
   return `hsl(${filterHue(lambdaEff)}, 42%, 72%)`;
 }
 
+function filterFillHot(lambdaEff) {
+  const hue = filterHue(lambdaEff);
+  return `hsla(${hue}, 52%, 68%, 0.62)`;
+}
+
+function filterLineHot(lambdaEff) {
+  return `hsl(${filterHue(lambdaEff)}, 52%, 72%)`;
+}
+
+const FILTER_FILL = 0.22;
+const FILTER_FILL_FLAGGED = 0.12;
+const FILTER_DIM = 0.2;
+
+let filterHiliteKey = null;
+let filterHiliteTimer = null;
+
+function filterKeyFromPoint(pt) {
+  const uid = pt?.data?.uid || pt?.fullData?.uid || "";
+  if (uid === "phot-marks") {
+    const cd = pt.customdata;
+    return cd == null ? null : String(cd);
+  }
+  if (String(uid).startsWith("filter-")) return String(uid).slice("filter-".length);
+  return null;
+}
+
+function setFilterHighlight(gd, hotKey) {
+  if (!gd?.data) return;
+  const idxs = [];
+  const opacities = [];
+  const fills = [];
+  const lineColors = [];
+  const lineWidths = [];
+  let hotIdx = -1;
+  for (let i = 0; i < gd.data.length; i++) {
+    const tr = gd.data[i];
+    const uid = tr?.uid;
+    if (!uid || !String(uid).startsWith("filter-")) continue;
+    const key = String(uid).slice("filter-".length);
+    const meta = tr.meta || {};
+    const lam = meta.lambdaEff;
+    const flagged = Boolean(meta.flagged);
+    idxs.push(i);
+    if (hotKey && key === hotKey) {
+      hotIdx = i;
+      opacities.push(1);
+      fills.push(Number.isFinite(lam) ? filterFillHot(lam) : filterColor(5500, 0.62));
+      lineColors.push(Number.isFinite(lam) ? filterLineHot(lam) : filterColor(5500));
+      lineWidths.push(2.4);
+    } else if (hotKey) {
+      opacities.push(FILTER_DIM);
+      fills.push(filterColor(lam, flagged ? 0.08 : FILTER_FILL));
+      lineColors.push(filterColor(lam));
+      lineWidths.push(1);
+    } else {
+      opacities.push(1);
+      fills.push(filterColor(lam, flagged ? FILTER_FILL_FLAGGED : FILTER_FILL));
+      lineColors.push(filterColor(lam));
+      lineWidths.push(flagged ? 1.6 : 1.2);
+    }
+  }
+  if (!idxs.length) return;
+  gd._bibApplying = true;
+  const restyle = Plotly.restyle(
+    gd,
+    { opacity: opacities, fillcolor: fills, "line.color": lineColors, "line.width": lineWidths },
+    idxs,
+  );
+  Promise.resolve(restyle)
+    .then(() => {
+      if (!hotKey) return;
+      const now = gd.data.findIndex((tr) => tr.uid === `filter-${hotKey}`);
+      if (now < 0) return;
+      const photIdx = gd.data.findIndex((tr) => tr.uid === "phot-marks");
+      if (photIdx >= 0) {
+        if (now !== photIdx - 1) return Plotly.moveTraces(gd, now, photIdx);
+      } else if (now !== gd.data.length - 1) {
+        return Plotly.moveTraces(gd, now, -1);
+      }
+    })
+    .then(() => {
+      setTimeout(() => {
+        gd._bibApplying = false;
+      }, 0);
+    });
+}
+
+function applyFilterHighlight(gd, key) {
+  clearTimeout(filterHiliteTimer);
+  if (key === filterHiliteKey) return;
+  filterHiliteKey = key;
+  setFilterHighlight(gd, key);
+}
+
+function scheduleClearFilterHighlight(gd) {
+  clearTimeout(filterHiliteTimer);
+  filterHiliteTimer = setTimeout(() => {
+    if (filterHiliteKey == null) return;
+    filterHiliteKey = null;
+    setFilterHighlight(gd, null);
+  }, 70);
+}
+
+function clearFilterHighlight(gd) {
+  clearTimeout(filterHiliteTimer);
+  if (filterHiliteKey == null) return;
+  filterHiliteKey = null;
+  setFilterHighlight(gd, null);
+}
+
 function tickedCurves() {
   const out = [];
   for (const key of state.ticked) {
@@ -1123,12 +1233,22 @@ function bindSedViewLock(host) {
     const pt = ev?.points?.[0];
     if (!pt) {
       hideSedHoverTip();
+      scheduleClearFilterHighlight(host);
       return;
     }
     showSedHoverTip(pt, ev.event);
+    const filterKey = filterKeyFromPoint(pt);
+    if (filterKey) applyFilterHighlight(host, filterKey);
+    else clearFilterHighlight(host);
   });
-  host.on("plotly_unhover", hideSedHoverTip);
-  host.addEventListener("mouseleave", hideSedHoverTip);
+  host.on("plotly_unhover", () => {
+    hideSedHoverTip();
+    scheduleClearFilterHighlight(host);
+  });
+  host.addEventListener("mouseleave", () => {
+    hideSedHoverTip();
+    clearFilterHighlight(host);
+  });
 }
 
 /** Drop any zoom/pan lock so the next draw frames the current SED again. */
@@ -1177,6 +1297,8 @@ const SED_PLOT_CONFIG = {
 function drawSedFrame(t) {
   if (!state.frames) return;
   hideSedHoverTip();
+  filterHiliteKey = null;
+  clearTimeout(filterHiliteTimer);
   const { y, logAge } = interpFromFrames(state.frames, t);
   const cur = observedPlot(state.frames.wavelength, y, state.redshift, igmFactorFor(state.redshift));
   const liveName = liveLabel(logAge);
@@ -1286,6 +1408,7 @@ function drawSedFrame(t) {
     const row = state.photFresh ? state.photRows.find((r) => r.key === key) : null;
     const flagged = Boolean(row && rowFlags(row).length);
     traces.push({
+      uid: `filter-${key}`,
       x: spectralXs(curve.wavelength),
       y: T,
       yaxis: "y2",
@@ -1294,7 +1417,7 @@ function drawSedFrame(t) {
       mode: "lines",
       line: { color: filterColor(curve.lambda_eff), width: flagged ? 1.6 : 1.2, dash: flagged ? "dash" : "solid" },
       fill: "tozeroy",
-      fillcolor: filterColor(curve.lambda_eff, flagged ? 0.12 : 0.22),
+      fillcolor: filterColor(curve.lambda_eff, flagged ? FILTER_FILL_FLAGGED : FILTER_FILL),
       text: curve.wavelength.map((a) =>
         state.xNu ? `${(C_A_S / a).toExponential(3)} Hz` : `${Math.round(a)} Å`,
       ),
@@ -1303,6 +1426,7 @@ function drawSedFrame(t) {
         `<br>%{text} · T=%{y:.2f}` +
         (row ? `<br>${attenuationText(row)}` : "") +
         `<extra></extra>`,
+      meta: { lambdaEff: curve.lambda_eff, flagged },
     });
   }
 
@@ -1317,8 +1441,10 @@ function drawSedFrame(t) {
       : [];
   if (marks.length) {
     traces.push({
+      uid: "phot-marks",
       x: marks.map((r) => spectralX(r.lambda_eff)),
       y: marks.map((r) => r.plot_level * distanceDimming(state.redshift)),
+      customdata: marks.map((r) => r.key),
       mode: "markers",
       showlegend: false,
       marker: {

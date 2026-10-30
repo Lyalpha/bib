@@ -11,6 +11,8 @@ All notable changes to bib are recorded here. The format follows
 - SSP explorer hover shows a legend-style line segment (plus “no IGM” on
   the unattenuated ghost) instead of repeating the population legend;
   wavelength is shown in Å, not scientific notation.
+- SSP explorer: hovering a photometry marker (or its passband) brings that
+  transmission curve to the front, fully filled, and fades the others.
 - SSP explorer SED plot starts at rest-frame 50 Å. Shorter wavelengths remain
   in downloads and the API; the atmosphere models are not useful there.
 
