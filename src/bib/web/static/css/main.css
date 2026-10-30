@@ -299,7 +299,7 @@ table.data tbody tr:hover { background: var(--brand-surface-2); }
 /* ---- plots ---------------------------------------------------------------- */
 
 .plot-host { width: 100%; min-height: 420px; border-radius: 12px; overflow: hidden; }
-.plot-host.compact { min-height: 280px; overflow: visible; }
+.plot-host.compact { min-height: 320px; overflow: visible; }
 
 .sed-with-key {
   display: grid;

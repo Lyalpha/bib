@@ -24,6 +24,9 @@ All notable changes to bib are recorded here. The format follows
 - SSP explorer: optional **sync redshifts** for pinned SEDs; passband
   colours paled so they don't clash with SED traces; photometry pill
   *No IGM* renamed *IGM ignored*.
+- Tutorial IMF plot: same slope shares a colour, M_max=300 is dashed;
+  legend is a single column to the right of the axes so it no longer
+  sits on the curves.
 
 ## [1.0.0] — 2026-10-27
 
