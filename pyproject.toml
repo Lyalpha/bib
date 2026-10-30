@@ -1,6 +1,6 @@
 [project]
 name = "bib"
-version = "1.0.0"
+version = "1.0.1"
 description = "BPASS-in-Browser (bib): a pedagogical web explorer for BPASS stellar population synthesis results"
 readme = "README.md"
 requires-python = ">=3.12"

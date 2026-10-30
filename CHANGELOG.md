@@ -6,15 +6,24 @@ All notable changes to bib are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-10-30
+
+Explorer, tutorial and copy follow-up to the 1.0.0 public launch.
+
 ### Changed
 
 - SSP explorer hover shows a legend-style line segment (plus “no IGM” on
   the unattenuated ghost) instead of repeating the population legend;
-  wavelength is shown in Å, not scientific notation.
-- SSP explorer: hovering a photometry marker (or its passband) brings that
-  transmission curve to the front, fully filled, and fades the others.
+  wavelength is shown in Å, not scientific notation. Hovering a photometry
+  marker (or its passband) brings that transmission curve to the front,
+  fully filled, and fades the others.
 - SSP explorer SED plot starts at rest-frame 50 Å. Shorter wavelengths remain
   in downloads and the API; the atmosphere models are not useful there.
+- Home, docs and footer present bib as an accessible, configurable browser
+  and API interface to released BPASS models. The Warwick BPASS mirror is
+  `https://warwick.ac.uk/bpass`.
+- Tutorial opening restored; IGM is its own section with diagnostic plots;
+  IMF plot pairs M_max by dash and shows a ratio-to-fiducial panel.
 
 ### Fixed
 
