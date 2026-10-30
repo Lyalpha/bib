@@ -38,15 +38,16 @@ the operator's view of the two explorers.
    SSP keeps its own ghost whatever the live toggles say. The live SED's
    regions are also lightly shaded. The photometry table's *Correction
    applied* column shows pills — **Dust**, **IGM**, or **None** — with amber
-   pills (*No dust (outside window)*, *Dust (partial)*, *No IGM*) where a
+   pills (*No dust (outside window)*, *Dust (partial)*, *IGM ignored*) where a
    requested correction could not be (fully) applied in that passband.
 7. **Pin SSP on plots** — overlays this population on every visible plot (frozen SED
    slice plus that SSP's full history on the timeseries). A management chip
    lets you remove it. Pinned SSPs survive selector changes. With one or more
    pins, **sum visible spectra** adds the live SSP and every pin. **Sync
-   visible spectra ages** moves every pin and the sum to the playhead age.
-   Each pin keeps the mass, dust and redshift it had when pinned. Photometry
-   stays on the live SSP.
+   ages** moves every pin and the sum to the playhead age; **sync
+   redshifts** shows every pin at the live z (IGM is recomputed at that z
+   if the pin had it on). Dust and mass stay as pinned. Photometry stays
+   on the live SSP.
 8. **Filters** — overlay bundled transmission curves; the photometry table
    lists absolute AB magnitudes (D_L = 10 pc) for the live SED and every
    pinned SED. **Upload custom filter** accepts two-column ASCII

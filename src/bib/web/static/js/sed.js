@@ -69,6 +69,7 @@ const state = {
   pins: [],
   pinSeq: 0,
   syncPins: false,
+  syncZ: false,
   sumPins: false,
   ticked: new Set(), // filter keys shown on the plot (bundled name or "custom:<file>")
   curveCache: new Map(), // key -> {wavelength, transmission, display_name, lambda_eff}
@@ -254,35 +255,43 @@ function igmFactorFor(z) {
 
 let igmTimer = null;
 
-/** Fetch (or reuse) the IGM transmission for the current z / model / population. */
+async function fetchIgm(popId, z, model) {
+  const cacheKey = `${popId}:${model}:${z}`;
+  const cached = state.igmCache.get(cacheKey);
+  if (cached) return cached;
+  const data = await apiGet("/igm_transmission", {
+    population_id: popId,
+    redshift: z,
+    model,
+  });
+  state.igmCache.set(cacheKey, data.transmission);
+  if (state.igmCache.size > 400) {
+    state.igmCache.delete(state.igmCache.keys().next().value);
+  }
+  return data.transmission;
+}
+
+/** Fetch (or reuse) IGM transmission for the live SED, and for z-synced pins. */
 async function ensureIgm() {
   const z = state.redshift;
-  if (!(z > 0) || !state.igmOn || state.popId === null) {
-    state.igm = null;
-    return;
-  }
-  if (igmFactorFor(z)) return;
-  const cacheKey = `${state.popId}:${state.igmModel}:${z}`;
-  const cached = state.igmCache.get(cacheKey);
-  if (cached) {
-    state.igm = { popId: state.popId, z, model: state.igmModel, transmission: cached };
-    return;
-  }
   const token = ++state.igmRequest;
   try {
-    const data = await apiGet("/igm_transmission", {
-      population_id: state.popId,
-      redshift: z,
-      model: state.igmModel,
-    });
-    if (token !== state.igmRequest) return;
-    state.igmCache.set(cacheKey, data.transmission);
-    if (state.igmCache.size > 400) {
-      state.igmCache.delete(state.igmCache.keys().next().value);
+    if (!(z > 0) || !state.igmOn || state.popId === null) {
+      state.igm = null;
+    } else if (!igmFactorFor(z)) {
+      const transmission = await fetchIgm(state.popId, z, state.igmModel);
+      if (token !== state.igmRequest) return;
+      state.igm = { popId: state.popId, z, model: state.igmModel, transmission };
     }
-    state.igm = { popId: state.popId, z, model: state.igmModel, transmission: data.transmission };
+    if (state.syncZ && z > 0) {
+      await Promise.all(
+        state.pins
+          .filter((pin) => pin.popId && pin.igmModel && pin.igmModel !== "none")
+          .map((pin) => fetchIgm(pin.popId, z, pin.igmModel)),
+      );
+    }
   } catch (err) {
-    reportError(err);
+    if (token === state.igmRequest) reportError(err);
   }
 }
 
@@ -586,11 +595,19 @@ function annotationX(lambdaA) {
   return state.xLog ? Math.log10(x) : x;
 }
 
-/** Rainbow-ish colour keyed to a filter's effective wavelength. */
-function filterColor(lambdaEff, alpha = 1) {
+/** Wavelength → hue (UV violet → IR red). Kept pale so passbands don't look like SEDs. */
+function filterHue(lambdaEff) {
   const t = Math.min(1, Math.max(0, (Math.log10(lambdaEff) - 3.45) / 0.95));
-  const hue = Math.round(285 * (1 - t));
-  return alpha >= 1 ? `hsl(${hue}, 75%, 62%)` : `hsla(${hue}, 75%, 62%, ${alpha})`;
+  return Math.round(285 * (1 - t));
+}
+
+function filterColor(lambdaEff, alpha = 1) {
+  const hue = filterHue(lambdaEff);
+  return alpha >= 1 ? `hsl(${hue}, 28%, 78%)` : `hsla(${hue}, 28%, 78%, ${alpha})`;
+}
+
+function filterMarkerColor(lambdaEff) {
+  return `hsl(${filterHue(lambdaEff)}, 42%, 72%)`;
 }
 
 function tickedCurves() {
@@ -773,10 +790,22 @@ function igmGhostTrace(restX, restY, z, igm, color, name, uid) {
   };
 }
 
-/** Rest-frame flux of a pin at playhead t (interpolated when synced, else as pinned). */
+/** Rest-frame flux of a pin at playhead t (interpolated when age-synced, else as pinned). */
 function pinRestY(pin, t) {
   if (state.syncPins && pin.frames) return interpFromFrames(pin.frames, t).y;
   return pin.restY || null;
+}
+
+function pinObservedZ(pin) {
+  return state.syncZ ? state.redshift : pin.z;
+}
+
+/** IGM factor on the pin's rest grid at the z it is currently drawn at, or null. */
+function pinIgmFactor(pin) {
+  const z = pinObservedZ(pin);
+  if (!(z > 0) || !pin.igmModel || pin.igmModel === "none") return null;
+  if (!state.syncZ) return pin.igm;
+  return state.igmCache.get(`${pin.popId}:${pin.igmModel}:${z}`) || null;
 }
 
 function plotLayout(xExtent, yLogExtent) {
@@ -880,12 +909,19 @@ function copyArr(arr) {
 }
 
 function pinView(pin, t) {
-  if (state.syncPins && pin.frames) {
-    const { y, logAge } = interpFromFrames(pin.frames, t);
-    const view = toObserved(pin.frames.wavelength, y, pin.z, pin.igm);
-    return { ...view, label: `${pin.basebits} · logA=${logAge.toFixed(2)} 🔗` };
+  if (!state.syncPins && !state.syncZ) {
+    return { x: pin.frozen.x, y: pin.frozen.y, label: pin.frozen.label };
   }
-  return { x: pin.frozen.x, y: pin.frozen.y, label: pin.frozen.label };
+  const restY = pinRestY(pin, t);
+  if (!restY || !pin.frames) {
+    return { x: pin.frozen.x, y: pin.frozen.y, label: pin.frozen.label };
+  }
+  const logAge =
+    state.syncPins && pin.frames ? interpFromFrames(pin.frames, t).logAge : pin.logAge;
+  const view = toObserved(pin.frames.wavelength, restY, pinObservedZ(pin), pinIgmFactor(pin));
+  const linked = [state.syncPins && "age", state.syncZ && "z"].filter(Boolean);
+  const mark = linked.length ? ` 🔗${linked.join("+")}` : "";
+  return { ...view, label: `${pin.basebits} · logA=${Number(logAge).toFixed(2)}${mark}` };
 }
 
 function addFluxOnto(xBase, yAcc, xSrc, ySrc) {
@@ -1014,14 +1050,22 @@ function drawSedFrame(t) {
     xMin = Math.min(xMin, view.x[0], view.x[view.x.length - 1]);
     xMax = Math.max(xMax, view.x[0], view.x[view.x.length - 1]);
     if (pin.yLog10) {
-      const shift = fluxLogShift(pin.z);
+      const shift = fluxLogShift(pinObservedZ(pin));
       yLo = Math.min(yLo, pin.yLog10.lo - shift);
       yHi = Math.max(yHi, pin.yLog10.hi - shift);
     }
     const restY = pinRestY(pin, t);
     const ghost =
       restY &&
-      igmGhostTrace(pin.frames.wavelength, restY, pin.z, pin.igm, pin.color, view.label, `pin-ghost-${pin.id}`);
+      igmGhostTrace(
+        pin.frames.wavelength,
+        restY,
+        pinObservedZ(pin),
+        pinIgmFactor(pin),
+        pin.color,
+        view.label,
+        `pin-ghost-${pin.id}`,
+      );
     if (ghost) traces.push(ghost);
     traces.push({
       uid: `pin-${pin.id}`,
@@ -1110,7 +1154,7 @@ function drawSedFrame(t) {
       mode: "lines",
       line: { color: filterColor(curve.lambda_eff), width: flagged ? 1.6 : 1.2, dash: flagged ? "dash" : "solid" },
       fill: "tozeroy",
-      fillcolor: filterColor(curve.lambda_eff, flagged ? 0.07 : 0.16),
+      fillcolor: filterColor(curve.lambda_eff, flagged ? 0.12 : 0.22),
       hovertemplate:
         `<b>${curve.display_name}</b>` +
         `<br>%{x:.4g} ${xUnit} · T=%{y:.2f}` +
@@ -1137,7 +1181,7 @@ function drawSedFrame(t) {
       marker: {
         symbol: "diamond",
         size: 9.5,
-        color: marks.map((r) => filterColor(r.lambda_eff)),
+        color: marks.map((r) => filterMarkerColor(r.lambda_eff)),
         line: { color: "#ffffff", width: 1 },
       },
       text: marks.map(
@@ -1222,7 +1266,17 @@ function restyleLiveSed(cur, logAge, t) {
       hover.push(sedHover(view.label));
       indices.push(j);
       const restY = pinRestY(pin, t);
-      if (restY && !pushGhost(`pin-ghost-${pin.id}`, pin.frames.wavelength, restY, pin.z, pin.igm, view.label)) {
+      if (
+        restY &&
+        !pushGhost(
+          `pin-ghost-${pin.id}`,
+          pin.frames.wavelength,
+          restY,
+          pinObservedZ(pin),
+          pinIgmFactor(pin),
+          view.label,
+        )
+      ) {
         return false;
       }
     }
@@ -1430,10 +1484,10 @@ function rowPills(entry) {
   } else if (entry.igm_status === "not_applied") {
     pills.push({
       kind: "warn",
-      text: "No IGM",
+      text: "IGM ignored",
       title:
-        "The passband reaches observed wavelengths below Lyα(1+z) but IGM attenuation is switched " +
-        "off, so this magnitude is brighter than a real high-z observation would be.",
+        "This passband reaches below Lyα(1+z) but IGM attenuation is switched off, so this " +
+        "magnitude is not IGM-corrected (brighter than a real high-z observation would be).",
     });
   }
   if (!pills.length) {
@@ -1654,6 +1708,7 @@ function renderColorKey(logAge) {
     if (state.syncPins && pin.frames) {
       spec = { ...spec, logAge: interpFromFrames(pin.frames, t).logAge };
     }
+    if (state.syncZ) spec = { ...spec, redshift: state.redshift };
     entries.push({ color: pin.color, spec });
   }
   const { shared, rows } = legendRows(entries);
@@ -1676,19 +1731,23 @@ function renderPins() {
   host.innerHTML = "";
   $("chip-sync").hidden = state.pins.length === 0;
   $("chip-sync").title =
-    "Lock every visible SED to the playhead age. Redshift, dust and mass stay as they were when you pinned.";
+    "Lock every visible SED to the playhead age. Dust, mass and (unless redshift-sync is on) redshift stay as they were when you pinned.";
+  $("chip-sync-z").hidden = state.pins.length === 0;
+  $("chip-sync-z").title =
+    "Show every pinned SED at the live redshift (wavelength stretch and dimming). A pin that had IGM on is recomputed at this z; dust and mass stay as pinned.";
   $("chk-sum").checked = state.sumPins;
   $("chip-sum").hidden = state.pins.length === 0;
   $("chip-sum").classList.toggle("is-ready", state.pins.length >= 1);
   $("chip-sum").title =
     state.pins.length >= 1
-      ? "Sum the live SSP with every pin. Each pin keeps the mass, dust and redshift it had when pinned."
+      ? "Sum the live SSP with every pin. Each pin keeps the mass and dust it had when pinned; redshift follows redshift-sync if that is on."
       : "Pin an SSP to sum it with the live spectrum.";
   for (const pin of state.pins) {
     const chip = document.createElement("span");
     chip.className = "chip";
     chip.style.setProperty("--chip-color", pin.color);
-    const label = state.syncPins ? `${pin.basebits} 🔗` : pin.basebits;
+    const linked = state.syncPins || state.syncZ;
+    const label = linked ? `${pin.basebits} 🔗` : pin.basebits;
     chip.innerHTML = `<span class="dot"></span>${label} <button title="Remove">×</button>`;
     chip.querySelector("button").addEventListener("click", () => {
       state.pins = state.pins.filter((p) => p !== pin);
@@ -1941,6 +2000,7 @@ $("btn-pin").addEventListener("click", () => {
   state.pins.push({
     id: ++state.pinSeq,
     color: nextPinColor(),
+    popId: state.popId,
     basebits,
     legend: liveLegendSpec(logAge),
     z,
@@ -1967,6 +2027,13 @@ $("btn-pin").addEventListener("click", () => {
 $("chk-sync").addEventListener("change", () => {
   state.syncPins = $("chk-sync").checked;
   renderPins();
+  renderFrame(clock.t, true);
+});
+
+$("chk-sync-z").addEventListener("change", () => {
+  state.syncZ = $("chk-sync-z").checked;
+  renderPins();
+  scheduleIgm();
   renderFrame(clock.t, true);
 });
 

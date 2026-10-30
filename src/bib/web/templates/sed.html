@@ -150,8 +150,11 @@
     </div>
 
     <div class="chips" id="pin-row">
-      <label class="chip sync-chip" id="chip-sync" hidden title="Lock every visible SED to the playhead age. Redshift, dust and mass stay as they were when you pinned.">
-        <input type="checkbox" id="chk-sync"> 🔗 sync visible spectra ages
+      <label class="chip sync-chip" id="chip-sync" hidden title="Lock every visible SED to the playhead age. Dust, mass and (unless redshift-sync is on) redshift stay as they were when you pinned.">
+        <input type="checkbox" id="chk-sync"> 🔗 sync ages
+      </label>
+      <label class="chip sync-chip" id="chip-sync-z" hidden title="Show every pinned SED at the live redshift. A pin that had IGM on is recomputed at this z; dust and mass stay as pinned.">
+        <input type="checkbox" id="chk-sync-z"> z sync redshifts
       </label>
       <label class="chip sync-chip" id="chip-sum" hidden title="Pin an SSP to sum it with the live spectrum.">
         <input type="checkbox" id="chk-sum"> Σ sum visible spectra
@@ -206,7 +209,7 @@
         <span class="badge">None</span>. Amber pills —
         <span class="badge warn">No dust (outside window)</span>,
         <span class="badge warn">Dust (partial)</span>,
-        <span class="badge warn">No IGM</span> — mean a requested correction could not
+        <span class="badge warn">IGM ignored</span> — mean a requested correction could not
         be (fully) applied inside that passband; the magnitude is always the plotted
         SED integrated through the filter.
         <span id="hidden-filters" hidden> <a href="#" id="lnk-partial"></a></span>
@@ -246,5 +249,5 @@
 
 {% block scripts %}
 <script src="/static/vendor/plotly-4.1.0.min.js"></script>
-<script type="module" src="/static/js/sed.js?v=28"></script>
+<script type="module" src="/static/js/sed.js?v=29"></script>
 {% endblock %}

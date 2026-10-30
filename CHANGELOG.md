@@ -21,6 +21,9 @@ All notable changes to bib are recorded here. The format follows
   correction could not be fully applied). Crossed photometry markers removed.
 - SSP explorer: at most three vertical edge lines on the live SED (dust
   window + Lyα); hover labels restyled for contrast and no extra strip.
+- SSP explorer: optional **sync redshifts** for pinned SEDs; passband
+  colours paled so they don't clash with SED traces; photometry pill
+  *No IGM* renamed *IGM ignored*.
 
 ## [1.0.0] — 2026-10-27
 
