@@ -58,12 +58,14 @@ export function cloneSeries(series) {
 
 export function hoverLabel() {
   const text = css("--brand-text") || "#e8ecf8";
-  const border = css("--brand-border") || "#2a3557";
+  const bg = css("--brand-bg") || "#0b1020";
+  const accent = css("--brand-primary") || "#5aa9ff";
   return {
-    bgcolor: "#141b30",
-    bordercolor: border,
-    font: { color: text, size: 12 },
+    bgcolor: bg,
+    bordercolor: accent,
+    font: { color: text, size: 13, family: "system-ui, sans-serif" },
     namelength: -1,
+    align: "left",
   };
 }
 
@@ -226,8 +228,8 @@ function line(x, y, name, color, width, dash, yFmt) {
     mode: "lines",
     line: { color, width: width ?? 2, dash: dash || "solid" },
     hovertemplate: counts
-      ? `%{text}<extra>${name}</extra>`
-      : `%{y:${yFmt || ".3g"}}<extra>${name}</extra>`,
+      ? `<b>${name}</b><br>%{text}<extra></extra>`
+      : `<b>${name}</b><br>%{y:${yFmt || ".3g"}}<extra></extra>`,
   };
   if (counts) tr.text = countHoverText(y);
   return tr;
@@ -554,9 +556,10 @@ export function renderAuxPlots(state, logAge) {
         if (!tr.y || tr.hoverinfo === "skip") continue;
         tr.customdata = tr.y.map((v) => (v == null || !Number.isFinite(v) ? null : v / off));
         tr.hovertemplate =
-          `N<sub>ion</sub> = %{y:.3g} s<sup>−1</sup>` +
+          `<b>${tr.name}</b>` +
+          `<br>N<sub>ion</sub> = %{y:.3g} s<sup>−1</sup>` +
           `<br>L(Hα) = %{customdata:.3g} erg s<sup>−1</sup>` +
-          `<extra>${tr.name}</extra>`;
+          `<extra></extra>`;
       }
     }
     const yRange = yAxisRange(allYs, spec.yLog);

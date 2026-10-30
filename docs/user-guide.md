@@ -32,11 +32,14 @@ the operator's view of the two explorers.
    absolute \(M_\mathrm{AB}\) at \(D_L=10\,\mathrm{pc}\) to apparent \(m_\mathrm{AB}\).
    Timeseries panels stay in the rest frame. **IGM attenuation** (on by default,
    Inoue et al. 2014 or Madau 1995) multiplies the observer-frame spectrum by
-   the mean intergalactic transmission bluewards of Lyα(1+z); the affected
-   region is shaded. The photometry table's *Applied* column states whether
-   each magnitude is dust-extinguished, IGM-attenuated, both or unattenuated,
-   and flags passbands where a requested effect could not be applied (crossed
-   marker on the plot).
+   the mean intergalactic transmission bluewards of Lyα(1+z). The live SED is
+   marked with at most three vertical lines (dust-law window edges, dashed
+   Lyα(1+z)) and a faint "ghost" of itself without the IGM factor; a pinned
+   SSP keeps its own ghost whatever the live toggles say. The live SED's
+   regions are also lightly shaded. The photometry table's *Correction
+   applied* column shows pills — **Dust**, **IGM**, or **None** — with amber
+   pills (*No dust (outside window)*, *Dust (partial)*, *No IGM*) where a
+   requested correction could not be (fully) applied in that passband.
 7. **Pin SSP on plots** — overlays this population on every visible plot (frozen SED
    slice plus that SSP's full history on the timeseries). A management chip
    lets you remove it. Pinned SSPs survive selector changes. With one or more

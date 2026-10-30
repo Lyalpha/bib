@@ -16,7 +16,7 @@ import {
   SUM_COLOR,
   UI_MAX_LOG_AGE,
   wantPinSum,
-} from "./ssp-plots.js?v=15";
+} from "./ssp-plots.js?v=16";
 
 const $ = (id) => document.getElementById(id);
 const css = (name) =>
@@ -45,10 +45,10 @@ const BALMER_SERIES = [
 ];
 const LYMAN_COLOR = "rgba(158, 190, 255, 0.85)";
 const BALMER_COLOR = "rgba(255, 196, 110, 0.9)";
-const DUST_OUTSIDE_FILL = "rgba(255, 180, 84, 0.10)"; // where a requested dust law is NOT applied
-const DUST_EDGE_COLOR = "rgba(255, 180, 84, 0.75)";
-const IGM_FILL = "rgba(120, 150, 255, 0.10)"; // observer-frame region attenuated by the IGM
-const IGM_EDGE_COLOR = "rgba(120, 150, 255, 0.8)";
+// Faint fills behind the *live* SED only: where its dust law acts, and where its IGM model acts.
+const DUST_FILL = "rgba(255, 180, 84, 0.08)";
+const IGM_FILL = "rgba(120, 150, 255, 0.10)";
+const GHOST_OPACITY = 0.38; // the same SED drawn without its IGM factor
 const TRAIL_DEX = 0.5; // log-age spacing of play-trail snapshots
 
 const state = {
@@ -312,7 +312,13 @@ function liveLabel(logAge) {
 
 function sedHover(extra) {
   const xUnit = state.xNu ? "Hz" : "Å";
-  return `%{x:.4g} ${xUnit} · %{y:.3g} L☉/Å<extra>` + extra + "</extra>";
+  const xLab = state.xNu ? "ν" : "λ";
+  return (
+    `<b>${extra}</b>` +
+    `<br>${xLab} = %{x:.4g} ${xUnit}` +
+    `<br>F<sub>λ</sub> = %{y:.3g} L<sub>☉</sub>/Å` +
+    `<extra></extra>`
+  );
 }
 
 /* -------------------------------------------------------------------- frames */
@@ -635,17 +641,53 @@ function addSeriesOverlays(layout, xExtent, lines, color) {
   }
 }
 
-/**
- * Shade (a) the observer-frame wavelengths where the chosen dust law is undefined, so it
- * is obvious that no extinction was applied there, and (b) the region blueward of
- * Lyα(1+z) where the IGM prescription acts.
+/* ------------------------------------------------------- attenuation marks */
+/*
+ * Dust and IGM are properties of *each* SED, not of the plot: every pin keeps the
+ * z, dust law and IGM model it was pinned with, so the live toggles must not
+ * change how a pin is marked. Each visible SED therefore gets its own marks, in
+ * its own colour:
+ *   - a faint "ghost" copy of itself without the IGM factor, so the attenuation
+ *     is visible as the gap between ghost and curve.
+ * Only the live SED additionally gets at most three vertical edge lines (dust
+ * window blue/red, Lyα) and faint fills over the regions where its dust law and
+ * IGM model act (IGM takes precedence where both do). Pins are not given their
+ * own edge lines — that became a forest as soon as more than one SED was on.
  */
-function addAttenuationRegions(layout, xExtent) {
+
+/** Observed-frame wavelengths at which dust / IGM act on one SED (null = not active). */
+function attenuationSpec({ z, dust, igmKey, igmActive }) {
+  const stretch = 1 + (z > 0 ? z : 0);
+  const spec = { dustWindow: null, dustLabel: null, lya: null, igmLabel: null };
+  if (dust?.dust_law && dust.ebv > 0) {
+    const lawMeta = state.meta?.dust_laws?.find((l) => l.key === dust.dust_law);
+    if (lawMeta?.valid_range_a) {
+      spec.dustWindow = [lawMeta.valid_range_a[0] * stretch, lawMeta.valid_range_a[1] * stretch];
+      spec.dustLabel = `${lawMeta.label || dust.dust_law} E(B−V)=${dust.ebv}`;
+    }
+  }
+  if (igmKey && igmKey !== "none" && igmActive) {
+    spec.lya = 1215.67 * stretch;
+    spec.igmLabel = igmLabel(igmKey);
+  }
+  return spec;
+}
+
+function liveAttenuationSpec() {
   const z = state.redshift;
-  const stretch = 1 + z;
+  return attenuationSpec({
+    z,
+    dust: dustParams(),
+    igmKey: igmModelKey(z),
+    igmActive: Boolean(igmFactorFor(z)),
+  });
+}
+
+/** Faint fills behind the live SED where its dust law / IGM model act. */
+function addAttenuationRegions(layout, xExtent) {
   const xLo = Math.min(xExtent[0], xExtent[1]);
   const xHi = Math.max(xExtent[0], xExtent[1]);
-  const band = (wlA, wlB, fill, edgeColor, label, edges) => {
+  const fill = (wlA, wlB, color) => {
     let x0 = spectralX(wlA);
     let x1 = spectralX(wlB);
     if (x0 > x1) [x0, x1] = [x1, x0];
@@ -660,55 +702,81 @@ function addAttenuationRegions(layout, xExtent) {
       x1,
       y0: 0,
       y1: 1,
-      fillcolor: fill,
+      fillcolor: color,
       line: { width: 0 },
       layer: "below",
     });
-    for (const wl of edges) {
-      const xe = spectralX(wl);
-      if (!(xe >= xLo && xe <= xHi)) continue;
-      layout.shapes.push({
-        type: "line",
-        xref: "x",
-        yref: "paper",
-        x0: xe,
-        x1: xe,
-        y0: 0,
-        y1: 1,
-        line: { color: edgeColor, width: 1, dash: "dashdot" },
-        layer: "below",
-      });
-    }
-    const mid = state.xLog ? Math.sqrt(x0 * x1) : 0.5 * (x0 + x1);
-    layout.annotations.push({
-      x: state.xLog ? Math.log10(mid) : mid,
-      y: 0.985,
-      yref: "paper",
-      yanchor: "top",
-      xanchor: "center",
-      text: label,
-      showarrow: false,
-      font: { size: 9.5, color: edgeColor },
-      bgcolor: "rgba(10,14,22,0.6)",
-    });
   };
+  const spec = liveAttenuationSpec();
+  if (spec.dustWindow) {
+    const [lo, hi] = spec.dustWindow;
+    fill(spec.lya != null ? Math.max(lo, spec.lya) : lo, hi, DUST_FILL);
+  }
+  if (spec.lya != null) fill(1e-6, spec.lya, IGM_FILL);
+}
 
-  const dust = dustParams();
-  if (dust.dust_law && dust.ebv > 0) {
-    const lawMeta = state.meta.dust_laws.find((l) => l.key === dust.dust_law);
-    if (lawMeta?.valid_range_a) {
-      const lo = lawMeta.valid_range_a[0] * stretch;
-      const hi = lawMeta.valid_range_a[1] * stretch;
-      const label = "no extinction applied<br>(outside dust-law window)";
-      band(1e-6, lo, DUST_OUTSIDE_FILL, DUST_EDGE_COLOR, label, [lo]);
-      band(hi, 1e12, DUST_OUTSIDE_FILL, DUST_EDGE_COLOR, label, [hi]);
-    }
+/** Full-height vertical line on the hidden passband axis so it can carry hover text. */
+function edgeTrace(wl, color, dash, text) {
+  const x = spectralX(wl);
+  return {
+    x: [x, x],
+    y: [0, 5],
+    yaxis: "y2",
+    mode: "lines",
+    showlegend: false,
+    line: { color, width: 1, dash },
+    text: [text, text],
+    hovertemplate: "%{text}<extra></extra>",
+  };
+}
+
+/** At most three full-height lines for the live SED: dust-window edges and Lyα. */
+function attenuationEdgeTraces() {
+  const traces = [];
+  const spec = liveAttenuationSpec();
+  const color = css("--brand-primary") || "#5aa9ff";
+  if (spec.dustWindow) {
+    const [lo, hi] = spec.dustWindow.map(Math.round);
+    const text = `${spec.dustLabel}<br>applied ${lo}–${hi} Å (observed)`;
+    for (const wl of spec.dustWindow) traces.push(edgeTrace(wl, color, "dot", text));
   }
-  if (igmModelKey() !== "none" && igmFactorFor(z)) {
-    const lya = 1215.67 * stretch;
-    // Model labels already carry a year in parentheses ("Inoue et al. (2014)").
-    band(1e-6, lya, IGM_FILL, IGM_EDGE_COLOR, `IGM-attenuated<br>${esc(igmLabel(state.igmModel))}`, [lya]);
+  if (spec.lya != null) {
+    traces.push(
+      edgeTrace(
+        spec.lya,
+        color,
+        "dash",
+        `IGM ${spec.igmLabel}<br>applied below Lyα(1+z) = ${Math.round(spec.lya)} Å`,
+      ),
+    );
   }
+  return traces;
+}
+
+/** The SED without its IGM factor, drawn only where that factor bites (< 0.999). */
+function igmGhostTrace(restX, restY, z, igm, color, name, uid) {
+  if (!igm || !(z > 0) || igm.length !== restY.length) return null;
+  let last = -1;
+  for (let i = 0; i < igm.length; i++) if (igm[i] < 0.999) last = i;
+  if (last < 0) return null;
+  const end = Math.min(restX.length, last + 3);
+  const view = toObserved(restX.slice(0, end), restY.slice(0, end), z, null);
+  return {
+    uid,
+    x: spectralXs(view.x),
+    y: view.y,
+    mode: "lines",
+    showlegend: false,
+    opacity: GHOST_OPACITY,
+    line: { color, width: 1 },
+    hovertemplate: sedHover(`${name} · without IGM`),
+  };
+}
+
+/** Rest-frame flux of a pin at playhead t (interpolated when synced, else as pinned). */
+function pinRestY(pin, t) {
+  if (state.syncPins && pin.frames) return interpFromFrames(pin.frames, t).y;
+  return pin.restY || null;
 }
 
 function plotLayout(xExtent, yLogExtent) {
@@ -940,7 +1008,7 @@ function drawSedFrame(t) {
   let yLo = state.yLog10.lo - zShift,
     yHi = state.yLog10.hi - zShift;
 
-  const traces = [];
+  const traces = attenuationEdgeTraces();
   for (const pin of state.pins) {
     const view = pinView(pin, t);
     xMin = Math.min(xMin, view.x[0], view.x[view.x.length - 1]);
@@ -950,6 +1018,11 @@ function drawSedFrame(t) {
       yLo = Math.min(yLo, pin.yLog10.lo - shift);
       yHi = Math.max(yHi, pin.yLog10.hi - shift);
     }
+    const restY = pinRestY(pin, t);
+    const ghost =
+      restY &&
+      igmGhostTrace(pin.frames.wavelength, restY, pin.z, pin.igm, pin.color, view.label, `pin-ghost-${pin.id}`);
+    if (ghost) traces.push(ghost);
     traces.push({
       uid: `pin-${pin.id}`,
       x: spectralXs(copyArr(view.x)),
@@ -984,6 +1057,17 @@ function drawSedFrame(t) {
     }
   }
 
+  const liveColor = css("--brand-primary") || "#5aa9ff";
+  const liveGhost = igmGhostTrace(
+    state.frames.wavelength,
+    y,
+    state.redshift,
+    igmFactorFor(state.redshift),
+    liveColor,
+    liveName,
+    "live-ghost",
+  );
+  if (liveGhost) traces.push(liveGhost);
   traces.push({
     uid: "live-sed",
     x: spectralXs(copyArr(cur.x)),
@@ -1028,10 +1112,10 @@ function drawSedFrame(t) {
       fill: "tozeroy",
       fillcolor: filterColor(curve.lambda_eff, flagged ? 0.07 : 0.16),
       hovertemplate:
-        `%{x:.4g} ${xUnit} · T=%{y:.2f}<extra>` +
-        curve.display_name +
-        (row ? ` · ${attenuationText(row)}` : "") +
-        "</extra>",
+        `<b>${curve.display_name}</b>` +
+        `<br>%{x:.4g} ${xUnit} · T=%{y:.2f}` +
+        (row ? `<br>${attenuationText(row)}` : "") +
+        `<extra></extra>`,
     });
   }
 
@@ -1051,22 +1135,18 @@ function drawSedFrame(t) {
       mode: "markers",
       showlegend: false,
       marker: {
-        // ◇ when every requested effect was applied inside the passband,
-        // crossed ◇ when dust or IGM was requested but could not be applied there.
-        symbol: marks.map((r) => (rowFlags(r).length ? "diamond-x" : "diamond")),
-        size: marks.map((r) => (rowFlags(r).length ? 11 : 9.5)),
+        symbol: "diamond",
+        size: 9.5,
         color: marks.map((r) => filterColor(r.lambda_eff)),
-        line: {
-          color: marks.map((r) => (rowFlags(r).length ? css("--brand-warn") || "#ffb454" : "#ffffff")),
-          width: marks.map((r) => (rowFlags(r).length ? 1.6 : 1)),
-        },
+        line: { color: "#ffffff", width: 1 },
       },
       text: marks.map(
         (r) =>
-          `${r.display_name}: ${state.redshift > 0 ? "m" : "M"}<sub>AB</sub> = ${r.ab_mag}` +
+          `<b>${r.display_name}</b>` +
+          `<br>${state.redshift > 0 ? "m" : "M"}<sub>AB</sub> = ${r.ab_mag}` +
           `<br>${attenuationText(r)}`,
       ),
-      hovertemplate: "%{text}<extra>photometry</extra>",
+      hovertemplate: "%{text}<extra></extra>",
     });
     for (const r of marks) {
       const level = r.plot_level * distanceDimming(state.redshift);
@@ -1115,6 +1195,23 @@ function restyleLiveSed(cur, logAge, t) {
   const names = [liveName];
   const hover = [sedHover(liveName)];
   const indices = [live];
+  // Ghost copies (SED without IGM) also move with age; fall back to a full draw if absent.
+  const pushGhost = (uid, restX, restY, z, igm, name) => {
+    const j = gd.data.findIndex((tr) => tr.uid === uid);
+    const ghost = igmGhostTrace(restX, restY, z, igm, "#000", name, uid);
+    if ((j < 0) !== !ghost) return false;
+    if (ghost) {
+      ys.push(ghost.y);
+      names.push(name);
+      hover.push(ghost.hovertemplate);
+      indices.push(j);
+    }
+    return true;
+  };
+  const liveRest = interpFromFrames(state.frames, t).y;
+  if (!pushGhost("live-ghost", state.frames.wavelength, liveRest, state.redshift, igmFactorFor(state.redshift), liveName)) {
+    return false;
+  }
   if (state.syncPins) {
     for (const pin of state.pins) {
       const j = gd.data.findIndex((tr) => tr.uid === `pin-${pin.id}`);
@@ -1124,6 +1221,10 @@ function restyleLiveSed(cur, logAge, t) {
       names.push(view.label);
       hover.push(sedHover(view.label));
       indices.push(j);
+      const restY = pinRestY(pin, t);
+      if (restY && !pushGhost(`pin-ghost-${pin.id}`, pin.frames.wavelength, restY, pin.z, pin.igm, view.label)) {
+        return false;
+      }
     }
   }
   if (wantPinSum(state)) {
@@ -1288,38 +1389,68 @@ function sanitizeFilterName(name) {
 }
 
 /** Requested-but-not-applied flags for one photometry row: [{text, title}]. */
-function rowFlags(entry) {
-  const flags = [];
-  if (entry.dust_status === "partial") {
-    flags.push({
-      text: "partial dust window",
+/**
+ * "Correction applied" pills for one photometry row — one pill per effect that
+ * matters in this passband, `None` when nothing does. `warn` pills mark a
+ * requested effect that could not be applied (fully) here.
+ */
+function rowPills(entry) {
+  const pills = [];
+  if (entry.dust_status === "applied") {
+    pills.push({
+      kind: "ok",
+      text: "Dust",
+      title: "Extinction applied: the passband lies inside the dust law's validity window (rest frame).",
+    });
+  } else if (entry.dust_status === "partial") {
+    pills.push({
+      kind: "warn",
+      text: "Dust (partial)",
       title:
-        "Part of this passband lies outside the dust law's validity window (rest frame). " +
-        "Extinction was applied only where the law is defined; nothing was extrapolated.",
+        "The passband straddles an edge of the dust law's validity window (rest frame). Extinction " +
+        "was applied only where the law is defined — nothing is extrapolated — so this magnitude " +
+        "is less reddened than a full application would give. It is exactly the plotted SED " +
+        "integrated through the filter.",
     });
   } else if (entry.dust_status === "not_applied") {
-    flags.push({
-      text: "outside dust window",
+    pills.push({
+      kind: "warn",
+      text: "No dust (outside window)",
       title:
-        "This passband lies entirely outside the dust law's validity window (rest frame), " +
-        "so the requested extinction was not applied here.",
+        "Dust was requested but this passband lies entirely outside the law's validity window " +
+        "(rest frame), so no extinction was applied here.",
     });
   }
-  if (entry.igm_status === "not_applied") {
-    flags.push({
-      text: "no IGM",
+  if (entry.igm_status === "applied") {
+    pills.push({
+      kind: "ok",
+      text: "IGM",
+      title: "IGM attenuation applied: the passband reaches observed wavelengths below Lyα(1+z).",
+    });
+  } else if (entry.igm_status === "not_applied") {
+    pills.push({
+      kind: "warn",
+      text: "No IGM",
       title:
-        "This passband reaches observed wavelengths below Lyα(1+z) but no IGM prescription " +
-        "is applied, so the magnitude is brighter than a real high-z observation would be.",
+        "The passband reaches observed wavelengths below Lyα(1+z) but IGM attenuation is switched " +
+        "off, so this magnitude is brighter than a real high-z observation would be.",
     });
   }
-  return flags;
+  if (!pills.length) {
+    pills.push({ kind: "", text: "None", title: "No dust or IGM correction acts in this passband." });
+  }
+  return pills;
+}
+
+/** Pills that mark a requested effect not (fully) applied (passband overlay). */
+function rowFlags(entry) {
+  return rowPills(entry).filter((p) => p.kind === "warn");
 }
 
 function attenuationText(entry) {
-  const label = entry.attenuation_label || "unattenuated";
-  const flags = rowFlags(entry).map((f) => f.text);
-  return flags.length ? `${label} (${flags.join(", ")})` : label;
+  return rowPills(entry)
+    .map((p) => p.text)
+    .join(" · ");
 }
 
 function rowHtml(entry) {
@@ -1331,15 +1462,14 @@ function rowHtml(entry) {
     entry.coverage < 0.999
       ? ` <span class="badge warn" title="Filter partially outside the SED wavelength range">partial coverage</span>`
       : "";
-  const label = escapeHtml(entry.attenuation_label || "unattenuated");
-  const flags = rowFlags(entry)
-    .map((f) => ` <span class="badge warn" title="${escapeHtml(f.title)}">${f.text}</span>`)
-    .join("");
+  const pills = rowPills(entry)
+    .map((p) => `<span class="badge ${p.kind}" title="${escapeHtml(p.title)}">${p.text}</span>`)
+    .join(" ");
   return (
     `<tr><td><input type="checkbox" data-key="${keyAttr}"${checked} title="Show passband + measured point on the plot"></td>` +
     `<td>${name}${partial}</td><td class="muted">${entry.group}</td>` +
     `<td>${Math.round(entry.lambda_eff)}</td><td><strong>${mag}</strong></td>` +
-    `<td class="small">${label}${flags}</td></tr>`
+    `<td class="small">${pills}</td></tr>`
   );
 }
 
@@ -1816,6 +1946,8 @@ $("btn-pin").addEventListener("click", () => {
     z,
     igm: igm ? igm.slice() : null,
     igmModel: igmModelKey(z),
+    dust: dustParams(), // law/E(B−V) baked into `frames` server-side; kept for the marks
+    restY: y.slice(), // rest-frame flux at pin time, for the IGM ghost when not synced
     massLog: Number($("sl-mass").value),
     frames: structuredClone(state.frames),
     series: cloneSeries(state.series),

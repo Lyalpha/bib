@@ -15,6 +15,12 @@ All notable changes to bib are recorded here. The format follows
 - SSP explorer: Plotly's "home" button restored the ranges of the very first
   draw (z = 0), which was then recorded as a user zoom and could leave the
   SED permanently off-screen. Replaced by "Recentre axes on the current SED".
+- SSP explorer: dust/IGM marks belong to each SED (ghost line without IGM,
+  live-only fills over the attenuated region). Photometry *Correction
+  applied* is pills only (Dust / IGM / None, amber when a requested
+  correction could not be fully applied). Crossed photometry markers removed.
+- SSP explorer: at most three vertical edge lines on the live SED (dust
+  window + Lyα); hover labels restyled for contrast and no extra strip.
 
 ## [1.0.0] — 2026-10-27
 
