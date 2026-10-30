@@ -1,14 +1,12 @@
 # bib — BPASS-in-Browser
 
-**bib** is a pedagogy-first web interface to the publicly released
+**bib** is an accessible, configurable interface to the publicly released
 [BPASS](https://bpass.auckland.ac.nz) (Binary Population and Spectral Synthesis)
-data products: interactive SEDs of simple stellar populations, synthetic AB
-photometry through bundled or user-supplied filters, and dust extinction of the SED.
+models: interactive SEDs of simple stellar populations, synthetic AB photometry
+through bundled or user-supplied filters, dust and IGM, and the same numbers
+through the API.
 
-It is for quick-look analysis and data-fetching of specific populations'
-data through the API. For scripted or large-scale analysis, use
-[hoki](https://heloises.github.io/hoki/intro.html) and the BPASS manuals and
-release papers. BPASS data are licensed
+BPASS data are licensed
 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) by the BPASS team
 (J. J. Eldridge & E. R. Stanway); bib itself is MIT.
 
