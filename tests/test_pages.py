@@ -71,12 +71,13 @@ def test_tutorial_mentions_key_concepts(client):
     assert "Ten minutes of background" not in html
 
 
-def test_privacy_page_is_short_and_links_from_footer(client):
+def test_privacy_page_is_short_and_linked_from_home(client):
     home = client.get("/").text
-    assert 'href="/privacy"' in home
+    assert home.count('href="/privacy"') >= 2
+    assert "We count page views and country" in home
     html = client.get("/privacy").text
     assert "which pages are viewed" in html
-    assert "That is all." in html
+    assert "how and when" in html
     assert "GoatCounter" not in html  # pixel off unless BIB_GOATCOUNTER_URL is set
 
 
