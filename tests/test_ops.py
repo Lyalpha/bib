@@ -10,8 +10,9 @@ from starlette.requests import Request
 
 from bib.api.v1.photometry import MAX_UPLOAD_BYTES, read_upload_capped, sanitize_upload_name
 from bib.config import Settings, get_branding, get_settings
+from bib.ops.headers import allow_goatcounter
 from bib.ops.metrics import classify_route, emit_page_hit, emit_request
-from bib.ops.ratelimit import is_limited
+from bib.ops.ratelimit import is_custom_filter_post, is_limited
 from bib.ops.stats import should_count
 
 
@@ -56,6 +57,46 @@ def test_docs_csp_allows_swagger_cdn(client):
     assert "cdn.jsdelivr.net" in csp
     home = client.get("/")
     assert "cdn.jsdelivr.net" not in home.headers["Content-Security-Policy"]
+    assert "goatcounter.com" not in home.headers["Content-Security-Policy"]
+    assert "goatcounter" not in home.text.lower()
+
+
+def test_allow_goatcounter_adds_img_and_connect():
+    csp = allow_goatcounter(
+        "default-src 'self'; img-src 'self' data:; connect-src 'self';",
+        "https://bib.goatcounter.com",
+    )
+    assert "img-src 'self' data: https://bib.goatcounter.com" in csp
+    assert "connect-src 'self' https://bib.goatcounter.com" in csp
+    assert allow_goatcounter("connect-src 'self';", None) == "connect-src 'self';"
+
+
+def test_goatcounter_pixel_when_configured(monkeypatch):
+    monkeypatch.setenv("BIB_GOATCOUNTER_URL", "https://bib.goatcounter.com/count")
+    get_settings.cache_clear()
+    get_branding.cache_clear()
+    from fastapi.testclient import TestClient
+
+    from bib.app import create_app
+
+    try:
+        with TestClient(create_app()) as gc_client:
+            home = gc_client.get("/")
+            assert home.status_code == 200
+            assert 'data-goatcounter="https://bib.goatcounter.com/count"' in home.text
+            assert "/static/js/goatcounter.js" in home.text
+            csp = home.headers["Content-Security-Policy"]
+            assert "https://bib.goatcounter.com" in csp
+            assert "gc.zgo.at" not in csp
+            assert "script-src 'self'" in csp
+            privacy = gc_client.get("/privacy")
+            assert privacy.status_code == 200
+            assert "GoatCounter" in privacy.text
+            assert "open-source" in privacy.text
+            assert "GDPR" in privacy.text
+    finally:
+        get_settings.cache_clear()
+        get_branding.cache_clear()
 
 
 def test_stats_allowlist_skips_api_and_unknown(client):
@@ -193,6 +234,8 @@ def test_is_limited_covers_expensive_set():
         }
         return Request(scope)
 
+    assert is_custom_filter_post(req("POST", "/api/v1/photometry/custom"))
+    assert not is_custom_filter_post(req("GET", "/api/v1/photometry"))
     assert is_limited(req("POST", "/api/v1/photometry/custom"), settings)
     assert is_limited(req("GET", "/api/v1/photometry"), settings)
     assert is_limited(req("GET", "/api/v1/populations/1/sed_frames"), settings)
@@ -221,6 +264,32 @@ def test_expensive_get_rate_limited(monkeypatch):
         client.get("/api/v1/photometry", params={"population_id": 1, "age_index": 0})
         third = client.get("/api/v1/photometry", params={"population_id": 1, "age_index": 0})
         assert third.status_code == 429
+    get_settings.cache_clear()
+    get_branding.cache_clear()
+
+
+def test_custom_filter_post_rate_limited(monkeypatch):
+    monkeypatch.setenv("BIB_CUSTOM_FILTER_RATE_LIMIT_PER_MINUTE", "2")
+    get_settings.cache_clear()
+    get_branding.cache_clear()
+    from fastapi.testclient import TestClient
+
+    from bib.app import create_app
+
+    def _post(client):
+        return client.post(
+            "/api/v1/photometry/custom",
+            data={"population_id": "1", "age_index": "0"},
+            files={"file": ("bad.txt", b"not a filter", "text/plain")},
+        )
+
+    with TestClient(create_app(), raise_server_exceptions=False) as client:
+        assert _post(client).status_code != 429
+        assert _post(client).status_code != 429
+        assert _post(client).status_code == 429
+        # The custom bucket is separate from the expensive-GET bucket.
+        phot = client.get("/api/v1/photometry", params={"population_id": 1, "age_index": 0})
+        assert phot.status_code != 429
     get_settings.cache_clear()
     get_branding.cache_clear()
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bib.config import Settings, get_settings
+from bib.config import Settings, get_settings, parse_goatcounter_url
 
 
 def test_user_config_env_used_when_cwd_has_no_dotenv(tmp_path, monkeypatch):
@@ -41,3 +41,20 @@ def test_cwd_dotenv_overrides_user_config_env(tmp_path, monkeypatch):
         assert "bib_app" not in settings.database_url
     finally:
         get_settings.cache_clear()
+
+
+def test_parse_goatcounter_url_accepts_https_count():
+    assert (
+        parse_goatcounter_url("https://bib.goatcounter.com/count")
+        == "https://bib.goatcounter.com/count"
+    )
+    assert parse_goatcounter_url("https://BIB.goatcounter.com") == (
+        "https://bib.goatcounter.com/count"
+    )
+    assert parse_goatcounter_url("") is None
+    assert parse_goatcounter_url("http://bib.goatcounter.com/count") is None
+    assert parse_goatcounter_url('https://x.goatcounter.com/count">') is None
+    assert Settings(goatcounter_url="https://bib.goatcounter.com/count").goatcounter_origin == (
+        "https://bib.goatcounter.com"
+    )
+    assert Settings().goatcounter_endpoint is None

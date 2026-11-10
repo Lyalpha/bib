@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Privacy{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>Privacy</h1>
+<p>
+  We count which pages are viewed{% if goatcounter_endpoint %}, and from which
+  country{% endif %}. That is all.
+</p>
+{% if goatcounter_endpoint %}
+<p>
+  Country comes from
+  <a href="https://www.goatcounter.com/" target="_blank" rel="noopener">GoatCounter</a>,
+  an open-source, GDPR-compliant service that does not set cookies or store
+  identifiable data.
+</p>
+{% endif %}
+</div>
+{% endblock %}

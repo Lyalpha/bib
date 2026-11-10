@@ -1791,6 +1791,20 @@ function rowHtml(entry) {
   );
 }
 
+const MAX_FILTER_UPLOAD_BYTES = 1 << 20;
+const MAX_CUSTOM_FILTERS = 6;
+
+function customFilterKey(custom) {
+  return `custom:${custom.name}`;
+}
+
+function dropCustomFilter(custom) {
+  state.customFilters = state.customFilters.filter((c) => c !== custom);
+  const key = customFilterKey(custom);
+  state.ticked.delete(key);
+  state.curveCache.delete(key);
+}
+
 async function customPhotometry(custom, ageIndex) {
   const form = new FormData();
   form.append("file", new Blob([custom.text]), custom.name);
@@ -1806,13 +1820,27 @@ async function customPhotometry(custom, ageIndex) {
   if (state.redshift > 0) form.append("redshift", String(state.redshift));
   const igm = igmParams();
   if (igm.igm) form.append("igm", igm.igm);
-  const response = await fetch("/api/v1/photometry/custom", { method: "POST", body: form });
+  let response;
+  try {
+    response = await fetch("/api/v1/photometry/custom", { method: "POST", body: form });
+  } catch (err) {
+    dropCustomFilter(custom);
+    reportError(err);
+    return null;
+  }
   if (!response.ok) {
-    reportError(new Error((await response.json()).detail || "custom filter failed"));
+    let detail = "custom filter failed";
+    try {
+      detail = (await response.json()).detail || detail;
+    } catch {
+      /* not JSON */
+    }
+    dropCustomFilter(custom);
+    reportError(new Error(detail));
     return null;
   }
   const payload = await response.json();
-  const key = `custom:${custom.name}`;
+  const key = customFilterKey(custom);
   if (payload.curve_preview) {
     state.curveCache.set(key, {
       display_name: custom.name,
@@ -2339,10 +2367,18 @@ $("btn-png").addEventListener("click", () => {
 $("lbl-file-filter")?.addEventListener("click", (event) => event.stopPropagation());
 $("file-filter").addEventListener("change", async (event) => {
   const file = event.target.files[0];
+  event.target.value = "";
   if (!file) return;
+  if (file.size > MAX_FILTER_UPLOAD_BYTES) {
+    reportError(new Error("filter file too large (max 1 MiB)"));
+    return;
+  }
+  if (state.customFilters.length >= MAX_CUSTOM_FILTERS) {
+    reportError(new Error(`at most ${MAX_CUSTOM_FILTERS} custom filters at once`));
+    return;
+  }
   const text = await file.text();
   state.customFilters.push({ name: sanitizeFilterName(file.name), text, autoTick: true });
-  event.target.value = "";
   schedulePhotometry();
 });
 

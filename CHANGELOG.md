@@ -6,6 +6,25 @@ All notable changes to bib are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Optional cookieless GoatCounter pixel (`BIB_GOATCOUNTER_URL`) for country-level
+  page views, with a `/privacy` honesty notice. First-party day/path hit counts
+  are unchanged.
+
+### Changed
+
+- Custom filter uploads: at most 6 per explorer session; dense curves are
+  downsampled to ~2000 points; dedicated 40/min rate limit on
+  `POST /api/v1/photometry/custom`.
+
+### Fixed
+
+- Custom filter uploads: a header after comment lines is accepted; a file
+  that fails to parse is dropped instead of being retried on every
+  photometry refresh. Uploads reject non-finite values, duplicate
+  wavelengths, absurd Å ranges, and more than 20,000 samples.
+
 ## [1.0.1] — 2026-10-30
 
 Explorer, tutorial and copy follow-up to the 1.0.0 public launch.

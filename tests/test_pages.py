@@ -6,7 +6,7 @@ import pytest
 
 from bib.config import get_branding, get_settings
 
-PAGES = ["/", "/index.html", "/ssp", "/tutorial", "/request", "/data"]
+PAGES = ["/", "/index.html", "/ssp", "/tutorial", "/request", "/data", "/privacy"]
 
 
 @pytest.mark.parametrize("path", PAGES)
@@ -69,6 +69,15 @@ def test_tutorial_mentions_key_concepts(client):
     assert "intergalactic medium" in html
     assert "headline BPASS" not in html
     assert "Ten minutes of background" not in html
+
+
+def test_privacy_page_is_short_and_links_from_footer(client):
+    home = client.get("/").text
+    assert 'href="/privacy"' in home
+    html = client.get("/privacy").text
+    assert "which pages are viewed" in html
+    assert "That is all." in html
+    assert "GoatCounter" not in html  # pixel off unless BIB_GOATCOUNTER_URL is set
 
 
 def test_footer_reports_package_version_and_both_bpass_mirrors(client):

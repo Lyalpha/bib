@@ -11,7 +11,9 @@ from collections import Counter
 from starlette.requests import Request
 from starlette.responses import Response
 
-COUNTED_PATHS = frozenset({"/", "/ssp", "/tutorial", "/request", "/data", "/sed"})
+COUNTED_PATHS = frozenset(
+    {"/", "/ssp", "/tutorial", "/request", "/data", "/sed", "/privacy"}
+)
 
 log = logging.getLogger("bib.ops.stats")
 

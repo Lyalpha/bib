@@ -67,7 +67,9 @@ used by the systemd unit) is also read; a checkout `.env` overrides it.
 | `BIB_EXPOSE_DOCS` | unset (on) | `/api/docs` and `/api/redoc`; unset means exposed. Set `false` to hide. `/api` and `/api/v1` redirect to the docs when they are on. |
 | `BIB_LOG_JSON` | unset | JSON request logs on stderr; unset means JSON when debug is false |
 | `BIB_RATE_LIMIT_PER_MINUTE` | `40` | in-process token bucket for expensive routes (per process, not clustered) |
+| `BIB_CUSTOM_FILTER_RATE_LIMIT_PER_MINUTE` | `40` | separate bucket for `POST /api/v1/photometry/custom` |
 | `BIB_STATS_FLUSH_SECONDS` | `60` | how often allowlisted HTML hit counts flush to `site_daily_stat` |
+| `BIB_GOATCOUNTER_URL` | empty | cookieless GoatCounter endpoint, e.g. `https://SITE.goatcounter.com/count`; empty disables the pixel |
 | `BIB_FORWARDED_ALLOW_IPS` | `127.0.0.1` | uvicorn `forwarded_allow_ips`; IPs whose `X-Forwarded-*` headers are trusted |
 
 ## Branding

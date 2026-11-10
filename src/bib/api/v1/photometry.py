@@ -178,7 +178,10 @@ def get_photometry(
 
 @router.post("/photometry/custom", summary="AB magnitude through an uploaded filter curve")
 async def post_custom_photometry(
-    file: UploadFile = File(..., description="Two-column ASCII: wavelength [Å], transmission"),
+    file: UploadFile = File(
+        ...,
+        description="Two-column ASCII: wavelength [Å], transmission. Dense curves are downsampled to ~2000 points.",
+    ),
     population_id: int = Form(...),
     log_age: float | None = Form(None, description="log10(age/yr) on the 0.1 dex grid 6.0–11.0"),
     age_index: int | None = Form(None, ge=0, le=50),

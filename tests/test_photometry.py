@@ -13,6 +13,8 @@ import pytest
 from bib.science.photometry import (
     AB_ZERO_FNU,
     C_A_S,
+    CUSTOM_FILTER_DOWNSAMPLE,
+    MAX_CUSTOM_FILTER_POINTS,
     FilterCurve,
     ab_magnitude,
     parse_custom_filter,
@@ -150,6 +152,13 @@ def test_parse_custom_filter_csv_with_header():
     assert curve.wavelength[0] == 4000.0
 
 
+def test_parse_custom_filter_comment_then_header():
+    text = "# Bessell V\nwavelength transmission\n4000 0.1\n4500 0.9\n5000 1.0\n5500 0.4\n"
+    curve = parse_custom_filter(text)
+    assert curve.wavelength.size == 4
+    assert curve.wavelength[0] == 4000.0
+
+
 def test_parse_custom_filter_too_few_rows():
     with pytest.raises(ValueError, match="at least 4"):
         parse_custom_filter("4000 1\n5000 1\n6000 1\n")
@@ -165,3 +174,43 @@ def test_parse_custom_filter_rejects_bad_line():
     text = "4000 0.1\n4500 abc\n5000 1.0\n5500 0.4\n"
     with pytest.raises(ValueError, match="line 2"):
         parse_custom_filter(text)
+
+
+def test_parse_custom_filter_rejects_nonfinite():
+    with pytest.raises(ValueError, match="non-finite"):
+        parse_custom_filter("4000 0.1\n4500 inf\n5000 1.0\n5500 0.4\n")
+    with pytest.raises(ValueError, match="non-finite"):
+        parse_custom_filter("4000 0.1\n4500 nan\n5000 1.0\n5500 0.4\n")
+
+
+def test_parse_custom_filter_rejects_duplicate_wavelengths():
+    with pytest.raises(ValueError, match="strictly increasing"):
+        parse_custom_filter("4000 0.1\n4500 0.9\n4500 1.0\n5500 0.4\n")
+
+
+def test_parse_custom_filter_rejects_huge_wavelengths():
+    with pytest.raises(ValueError, match="too large"):
+        parse_custom_filter("1e9 0.1\n2e9 0.9\n3e9 1.0\n4e9 0.4\n")
+
+
+def test_parse_custom_filter_rejects_too_many_samples():
+    wl = np.linspace(4000.0, 6000.0, MAX_CUSTOM_FILTER_POINTS + 1)
+    text = "\n".join(f"{w:.4f} 1.0" for w in wl)
+    with pytest.raises(ValueError, match="too many samples"):
+        parse_custom_filter(text)
+
+
+def test_parse_custom_filter_downsamples_dense_curve():
+    n = 8000
+    wl = np.linspace(4000.0, 6000.0, n)
+    tr = np.exp(-0.5 * ((wl - 5000.0) / 400.0) ** 2)
+    text = "\n".join(f"{w:.4f} {t:.8f}" for w, t in zip(wl, tr, strict=True))
+    curve = parse_custom_filter(text)
+    assert 4 <= curve.wavelength.size <= CUSTOM_FILTER_DOWNSAMPLE
+    assert curve.wavelength[0] == pytest.approx(4000.0)
+    assert curve.wavelength[-1] == pytest.approx(6000.0)
+    sed_wl = np.linspace(3000.0, 7000.0, 4000)
+    full = FilterCurve(name="full", display_name="full", wavelength=wl, transmission=tr)
+    mag_ds = ab_magnitude(sed_wl, ab_flat_sed(sed_wl), curve)
+    mag_full = ab_magnitude(sed_wl, ab_flat_sed(sed_wl), full)
+    assert mag_ds.ab_mag == pytest.approx(mag_full.ab_mag, abs=1e-3)

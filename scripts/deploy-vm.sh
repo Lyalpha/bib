@@ -306,6 +306,7 @@ BIB_FORWARDED_ALLOW_IPS=127.0.0.1
 BIB_ALLOWED_HOSTS=${public},localhost,127.0.0.1
 BIB_ADMIN_TOKEN=${token}
 BIB_ADMIN_PATH=/_ops
+# BIB_GOATCOUNTER_URL=https://SITE.goatcounter.com/count
 EOF
   chmod 600 "$ENV_FILE"
 }

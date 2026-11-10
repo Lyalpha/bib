@@ -3,7 +3,8 @@
 Notes for running bib as a **public pedagogical site** (university Linux host
 behind Apache or Caddy, or a compose stack with credentials changed). This is
 not a full observability platform: logs go to stderr/journald, probes are two
-HTTP endpoints, and visit counts are first-party path totals.
+HTTP endpoints, and visit counts are first-party path totals (plus optional
+GoatCounter country stats).
 
 For branding, bind address, and the base env table see
 [Branding & deployment](deployment.md).
@@ -286,15 +287,23 @@ bib stores **date + path + hit count** only (`site_daily_stat`). No IP,
 user-agent, fingerprint, query string, or cookies are recorded. Counts are
 HTML **GET**s that return 2xx/3xx on an allowlist:
 
-`/`, `/ssp`, `/tutorial`, `/data`, `/sed`
+`/`, `/ssp`, `/tutorial`, `/request`, `/data`, `/sed`, `/privacy`
 
 `/static`, `/api`, and the operator console are not counted. Totals flush
 to PostgreSQL about every `BIB_STATS_FLUSH_SECONDS` (default 60) and on
 shutdown; a missing table is logged and ignored.
 
-This is not personal data under GDPR-style rules, so there is **no consent
-banner**. Do not add third-party analytics (GA, Mixpanel, Plausible, Umami)
-to a public bib; a future GoatCounter snippet is out of scope here.
+Optional **GoatCounter** (`BIB_GOATCOUNTER_URL`, e.g.
+`https://SITE.goatcounter.com/count`) adds a cookieless 1×1 pixel that sends
+the page path only. GoatCounter derives a country code from the request IP
+and does not set a cookie. Sign their DPA before enabling this on a public
+host; the pixel is off by default. Ad blockers will undercount, which is why
+the first-party totals stay. Do not add Google Analytics, Mixpanel, or
+similar cookie-based trackers.
+
+There is **no consent banner**. `/privacy` states what is counted. The
+operator console still shows 14 days of first-party hits; country breakdown
+is read in GoatCounter's own dashboard.
 
 ## Schema and backups
 
@@ -331,11 +340,13 @@ host; **never** add a `5432:5432` (or equivalent) publish on a public
 machine.
 
 The in-memory rate limiter (default `BIB_RATE_LIMIT_PER_MINUTE=40`) covers
-the expensive routes (`POST /api/v1/photometry`, `GET /api/v1/export`,
-`/sed_frames`, the custom-SED upload and the operator login) and is
-**per process**. It is fine for one or two uvicorn workers; it does not
-sync across hosts. Export tables are streamed row by row, so a large
-all-ages SED export never holds the whole file in memory.
+the expensive routes (`GET /api/v1/photometry`, `GET /api/v1/export`,
+`/sed_frames`, native/CSV SED downloads and the operator login) and is
+**per process**. Custom filter uploads use a separate bucket
+(`BIB_CUSTOM_FILTER_RATE_LIMIT_PER_MINUTE=40`). Both are fine for one or
+two uvicorn workers; they do not sync across hosts. Export tables are
+streamed row by row, so a large all-ages SED export never holds the whole
+file in memory.
 
 Interactive OpenAPI (`/api/docs`, `/api/redoc`) is on by default. `/api` and
 `/api/v1` redirect there. Set `BIB_EXPOSE_DOCS=false` to hide the Swagger UI.

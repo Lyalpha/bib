@@ -60,6 +60,7 @@ def _site_context(request: Request) -> dict[str, Any]:
         "active_path": request.url.path,
         "has_synthetic": has_synthetic_data(),
         "expose_docs": bool(settings and settings.should_expose_docs),
+        "goatcounter_endpoint": settings.goatcounter_endpoint if settings else None,
     }
 
 

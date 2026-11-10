@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 import yaml
 from pydantic import AliasChoices, BaseModel, Field
@@ -51,6 +52,24 @@ class Branding(BaseModel):
 _USER_ENV = Path.home() / ".config" / "bib" / "env"
 
 
+def parse_goatcounter_url(raw: str | None) -> str | None:
+    """Return a safe ``https://…/count`` endpoint, or None if unset/invalid."""
+    text = (raw or "").strip()
+    if not text or any(ch in text for ch in "<>\"'` \t\n\r"):
+        return None
+    parsed = urlparse(text)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return None
+    if parsed.username or parsed.password or parsed.fragment:
+        return None
+    path = parsed.path if parsed.path not in ("", "/") else "/count"
+    if "//" in path:
+        return None
+    return urlunparse(
+        ("https", parsed.netloc.lower(), path.rstrip("/") or "/count", "", "", "")
+    )
+
+
 def _settings_env_files() -> tuple[Path, str]:
     """Deploy env first, then cwd ``.env`` (later file wins). Missing files are skipped."""
     return (_USER_ENV, ".env")
@@ -91,7 +110,10 @@ class Settings(BaseSettings):
     expose_docs: bool | None = None
     log_json: bool | None = None
     rate_limit_per_minute: int = 40
+    custom_filter_rate_limit_per_minute: int = 40
     stats_flush_seconds: int = 60
+    # Cookieless GoatCounter pixel, e.g. https://SITE.goatcounter.com/count
+    goatcounter_url: str = ""
     # Comma-separated IPs uvicorn trusts for X-Forwarded-* (default: local proxy).
     forwarded_allow_ips: str = "127.0.0.1"
 
@@ -112,9 +134,22 @@ class Settings(BaseSettings):
             "/about",
             "/data",
             "/tutorial",
+            "/privacy",
         }:
             return "/_ops"
         return raw
+
+    @property
+    def goatcounter_endpoint(self) -> str | None:
+        return parse_goatcounter_url(self.goatcounter_url)
+
+    @property
+    def goatcounter_origin(self) -> str | None:
+        endpoint = self.goatcounter_endpoint
+        if not endpoint:
+            return None
+        parsed = urlparse(endpoint)
+        return f"{parsed.scheme}://{parsed.netloc}"
 
     @property
     def allowed_host_list(self) -> list[str]:

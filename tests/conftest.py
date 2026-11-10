@@ -26,9 +26,11 @@ os.environ["BIB_DATABASE_URL"] = _TEST_URL
 # developer's .env carries a DSN. Tests that exercise the hook set their own.
 os.environ["BIB_SENTRY_DSN"] = ""
 os.environ["SENTRY_DSN"] = ""
+os.environ["BIB_GOATCOUNTER_URL"] = ""
 # The whole suite shares one TestClient (one "client IP"); the expensive-route
 # token bucket would otherwise run dry. The limiter has its own dedicated test.
 os.environ.setdefault("BIB_RATE_LIMIT_PER_MINUTE", "100000")
+os.environ.setdefault("BIB_CUSTOM_FILTER_RATE_LIMIT_PER_MINUTE", "100000")
 
 import pytest  # noqa: E402
 

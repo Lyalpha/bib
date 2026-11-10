@@ -14,7 +14,7 @@ from bib.config import Settings
 from bib.ops.headers import apply_security_headers
 from bib.ops.logging import LogRing, setup_logging
 from bib.ops.metrics import emit_request
-from bib.ops.ratelimit import RateLimiter, client_ip, is_limited
+from bib.ops.ratelimit import RateLimiter, client_ip, is_custom_filter_post, is_limited
 from bib.ops.robots import router as robots_router
 from bib.ops.stats import PathCounter, maybe_record, start_flusher
 
@@ -25,6 +25,7 @@ def install(app: FastAPI, settings: Settings) -> None:
     ring: LogRing = app.state.log_ring
     logger = setup_logging(settings, ring)
     app.state.rate_limiter = RateLimiter(settings.rate_limit_per_minute)
+    app.state.custom_filter_limiter = RateLimiter(settings.custom_filter_rate_limit_per_minute)
     app.state.stats = PathCounter()
     app.include_router(robots_router)
 
@@ -32,7 +33,14 @@ def install(app: FastAPI, settings: Settings) -> None:
     async def ops_middleware(request: Request, call_next):
         request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
         request.state.request_id = request_id
-        if is_limited(request, settings) and not app.state.rate_limiter.allow(client_ip(request)):
+        ip = client_ip(request)
+        if is_custom_filter_post(request):
+            allowed = app.state.custom_filter_limiter.allow(ip)
+        elif is_limited(request, settings):
+            allowed = app.state.rate_limiter.allow(ip)
+        else:
+            allowed = True
+        if not allowed:
             response = JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
             response.headers["Retry-After"] = "60"
             apply_security_headers(response, request, request_id)

@@ -190,7 +190,7 @@
       <summary>
         <h2 class="panel-title">Photometry</h2>
         <span class="muted small" id="phot-frame">(absolute AB · D<sub>L</sub> = 10 pc)</span>
-        <label class="btn small" id="lbl-file-filter" title="Two columns: wavelength [Å], transmission">
+        <label class="btn small" id="lbl-file-filter" title="Two-column ASCII: wavelength [Å], transmission. Dense curves are downsampled to ~2000 points. At most 6 per session, 1 MiB.">
           Upload custom filter <input type="file" id="file-filter" accept=".txt,.csv,.dat" hidden>
         </label>
       </summary>
@@ -249,5 +249,5 @@
 
 {% block scripts %}
 <script src="/static/vendor/plotly-4.1.0.min.js"></script>
-<script type="module" src="/static/js/sed.js?v=35"></script>
+<script type="module" src="/static/js/sed.js?v=37"></script>
 {% endblock %}

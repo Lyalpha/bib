@@ -67,7 +67,8 @@ curl -s "localhost:8000/api/v1/photometry?population_id={id}&log_age=9.0&filters
 curl -s "localhost:8000/api/v1/photometry?population_id={id}&log_age=7.0&redshift=6&igm=inoue14&filters=jwst.f090w,jwst.f200w" \
   | jq '.photometry[] | {filter, ab_mag, dust_status, igm_status, attenuation_label}'
 
-# custom filter upload (two-column wavelength [Å], transmission)
+# custom filter upload (two-column wavelength [Å], transmission;
+# dense curves are downsampled to ~2000 points)
 curl -s -F "file=@myfilter.txt" -F population_id={id} -F log_age=9.0 \
      localhost:8000/api/v1/photometry/custom | jq .result
 

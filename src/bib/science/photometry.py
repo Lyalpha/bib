@@ -14,6 +14,7 @@ interpolated onto the SED grid, which is always the full-resolution grid.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -22,6 +23,10 @@ from bib.science.sed import flux_at_10pc
 
 C_A_S = 2.99792458e18  # speed of light in Å/s
 AB_ZERO_FNU = 3631.0e-23  # erg/s/cm^2/Hz
+# Uploaded curves: parse up to this many samples, then downsample for photometry.
+MAX_CUSTOM_FILTER_POINTS = 20_000
+CUSTOM_FILTER_DOWNSAMPLE = 2000
+MAX_CUSTOM_WAVELENGTH_A = 1.0e8  # 1 cm; anything larger is not a bandpass
 
 
 @dataclass
@@ -127,35 +132,67 @@ def ab_magnitude(
     return PhotometryResult(filt.name, mag, filt.lambda_eff, float(coverage))
 
 
+def downsample_filter_curve(
+    wl: np.ndarray, tr: np.ndarray, n_max: int = CUSTOM_FILTER_DOWNSAMPLE
+) -> tuple[np.ndarray, np.ndarray]:
+    """Keep endpoints and ~``n_max`` original samples, uniformly in index."""
+    n = int(wl.size)
+    if n <= n_max:
+        return wl, tr
+    idx = np.unique(np.round(np.linspace(0, n - 1, n_max)).astype(int))
+    idx[0] = 0
+    idx[-1] = n - 1
+    idx = np.unique(idx)
+    return wl[idx], tr[idx]
+
+
 def parse_custom_filter(text: str, name: str = "custom") -> FilterCurve:
     """Parse a user-uploaded transmission curve.
 
     Accepts two-column ASCII (wavelength[Å], transmission), comma- or
-    whitespace-separated, '#' comments ignored. Assumed photon-counting.
+    whitespace-separated, '#' comments ignored. A header or other preamble
+    before the first data row is skipped. Assumed photon-counting. Curves
+    denser than ``CUSTOM_FILTER_DOWNSAMPLE`` samples are downsampled.
     """
     rows: list[tuple[float, float]] = []
+    preamble = True
     for lineno, raw_line in enumerate(text.splitlines(), start=1):
         line = raw_line.split("#", 1)[0].strip()
         if not line:
             continue
         parts = line.replace(",", " ").split()
         if len(parts) < 2:
+            if preamble:
+                continue
             raise ValueError(f"line {lineno}: expected two columns, got {line!r}")
         try:
-            rows.append((float(parts[0]), float(parts[1])))
+            wl_i, tr_i = float(parts[0]), float(parts[1])
         except ValueError as exc:
-            if lineno == 1:  # tolerate a header line
+            if preamble:
                 continue
             raise ValueError(f"line {lineno}: not numeric: {line!r}") from exc
+        if not (math.isfinite(wl_i) and math.isfinite(tr_i)):
+            raise ValueError(f"line {lineno}: non-finite value")
+        preamble = False
+        rows.append((wl_i, tr_i))
+        if len(rows) > MAX_CUSTOM_FILTER_POINTS:
+            raise ValueError(f"too many samples (max {MAX_CUSTOM_FILTER_POINTS})")
     if len(rows) < 4:
         raise ValueError("need at least 4 (wavelength, transmission) samples")
     arr = np.asarray(rows, dtype=float)
     wl, tr = arr[:, 0], arr[:, 1]
+    order = np.argsort(wl, kind="mergesort")
+    wl, tr = wl[order], tr[order]
     if np.any(wl <= 0):
         raise ValueError("wavelengths must be positive (Å)")
-    if wl.max() < 100.0:
+    if np.any(np.diff(wl) <= 0):
+        raise ValueError("wavelengths must be strictly increasing")
+    if float(wl.max()) < 100.0:
         # Looks like microns; be strict instead of guessing.
         raise ValueError("wavelengths look too small — supply Ångströms")
+    if float(wl.max()) > MAX_CUSTOM_WAVELENGTH_A:
+        raise ValueError("wavelengths look too large — supply Ångströms")
+    wl, tr = downsample_filter_curve(wl, tr)
     return FilterCurve(
         name=name,
         display_name=name,

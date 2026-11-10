@@ -51,12 +51,16 @@ the operator's view of the two explorers.
 8. **Filters** — overlay bundled transmission curves; the photometry table
    lists absolute AB magnitudes (D_L = 10 pc) for the live SED and every
    pinned SED. **Upload custom filter** accepts two-column ASCII
-   (wavelength [Å], transmission).
+   (wavelength [Å], transmission); dense curves are downsampled to ~2000
+   points; at most six in one session.
 9. **Export** — PNG of the SED plot; CSV/JSON of the spectrum at full native
    resolution (display plots use a rebinned copy, downloads never do). For
    tables with units and a query header, use [Fetch data](/request)
    (`GET /api/v1/export`). Add a product in `bib.export.catalog` when the
    explorer grows — the page reads that list.
+
+The footer **Privacy** page states what this instance counts (first-party
+page totals; country via GoatCounter when the operator has enabled it).
 
 ## Synthetic demo banner
 

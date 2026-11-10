@@ -54,9 +54,14 @@
     {% if branding.source_url %}
     · <a href="{{ branding.source_url }}" target="_blank" rel="noopener">Source</a>
     {% endif %}
+    · <a href="/privacy">Privacy</a>
   </div>
 </footer>
 
 {% block scripts %}{% endblock %}
+{% if goatcounter_endpoint %}
+<script data-goatcounter="{{ goatcounter_endpoint }}" src="/static/js/goatcounter.js?v=1" async></script>
+<noscript><img src="{{ goatcounter_endpoint }}?p={{ active_path | urlencode }}" alt="" width="1" height="1"></noscript>
+{% endif %}
 </body>
 </html>

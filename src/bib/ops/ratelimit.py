@@ -19,11 +19,15 @@ def client_ip(request: Request) -> str:
     return "unknown"
 
 
+def is_custom_filter_post(request: Request) -> bool:
+    return request.method == "POST" and request.url.path == "/api/v1/photometry/custom"
+
+
 def is_limited(request: Request, settings: Settings) -> bool:
     path = request.url.path
     method = request.method
     admin = settings.normalized_admin_path
-    if method == "POST" and path == "/api/v1/photometry/custom":
+    if is_custom_filter_post(request):
         return True
     if method == "POST" and path.rstrip("/") == f"{admin}/login":
         return True

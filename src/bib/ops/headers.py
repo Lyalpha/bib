@@ -37,10 +37,25 @@ def _csp_for(path: str) -> str:
     return CSP
 
 
+def allow_goatcounter(csp: str, origin: str | None) -> str:
+    """Permit the GoatCounter pixel host when an endpoint is configured."""
+    if not origin:
+        return csp
+    csp = csp.replace("connect-src 'self';", f"connect-src 'self' {origin};", 1)
+    csp = csp.replace("img-src 'self' data:", f"img-src 'self' data: {origin}", 1)
+    return csp
+
+
+def csp_header(request: Request) -> str:
+    settings = getattr(request.app.state, "settings", None)
+    origin = settings.goatcounter_origin if settings else None
+    return allow_goatcounter(_csp_for(request.url.path), origin)
+
+
 def apply_security_headers(response: Response, request: Request, request_id: str) -> None:
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    response.headers["Content-Security-Policy"] = _csp_for(request.url.path)
+    response.headers["Content-Security-Policy"] = csp_header(request)

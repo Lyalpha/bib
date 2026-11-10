@@ -44,3 +44,8 @@ async def data_page(request: Request):
 @router.get("/about")
 async def about_redirect():
     return RedirectResponse("/#acknowledgement", status_code=301)
+
+
+@router.get("/privacy")
+async def privacy_page(request: Request):
+    return templates.TemplateResponse(request, "privacy.html")
