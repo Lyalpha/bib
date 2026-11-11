@@ -6,6 +6,10 @@ All notable changes to bib are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-11-11
+
+Custom-filter upload hardening and cookieless country stats.
+
 ### Added
 
 - Optional cookieless GoatCounter pixel (`BIB_GOATCOUNTER_URL`) for country-level

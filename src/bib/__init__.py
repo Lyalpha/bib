@@ -5,4 +5,4 @@ population synthesis results (v2.2.1, with the v2.3 alpha-enhancement
 extension).
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"

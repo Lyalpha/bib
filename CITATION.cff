@@ -15,8 +15,8 @@ abstract: >-
   dust extinction within each law's validity window, redshifting with flat
   ΛCDM distances, and optional IGM attenuation (Inoue et al. 2014;
   Madau 1995), with per-filter flags stating what was applied.
-version: 1.0.1
-date-released: "2026-10-30"
+version: 1.0.2
+date-released: "2026-11-11"
 license: MIT
 repository-code: "https://github.com/Lyalpha/bib"
 url: "https://bib.warwick.ac.uk"
