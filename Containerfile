@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 # ---------------------------------------------------------------------------
-FROM python:3.13-slim-bookworm
+FROM python:3.15-slim-bookworm
 
 RUN groupadd -r bib && useradd -r -g bib -d /app bib
 
