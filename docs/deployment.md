@@ -117,7 +117,7 @@ is attached):
 |---|---|---|
 | `ci.yml` | push to `main`, pull requests | `uv lock --check`, ruff lint + format, `cffconvert --validate`, pytest against a PostgreSQL service (Python 3.13), `mkdocs build --strict`, container build + health probe |
 | `science-regression.yml` | weekly, `v*` tags, manual | fetches the BPASS subset, runs `pytest -m realdata`, publishes the pass/fail table in the job summary |
-| `release.yml` | `v*` tags | checks tag = `pyproject` = package = `CITATION.cff` = `.zenodo.json` and that no placeholders remain, pushes the image to GHCR, creates the GitHub release from the matching `CHANGELOG.md` section |
+| `release.yml` | `v*` tags | checks tag = `pyproject` = package = `CITATION.cff` = `.zenodo.json` and that no placeholders remain, pushes the image to GHCR, creates the GitHub release from the matching `CHANGELOG.md` section. Zenodo then archives that GitHub Release (enable the repo once at [zenodo.org/account/settings/github](https://zenodo.org/account/settings/github/)); do not add a second Zenodo-upload action |
 | `security.yml` | push, PR, weekly | `pip-audit` on the exported lock, `gitleaks` over history |
 
 Dependabot (`.github/dependabot.yml`) opens monthly grouped updates for the

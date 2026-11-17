@@ -104,7 +104,8 @@ def test_data_page_is_catalogue_not_ingest_guide(client):
     html = client.get("/data").text
     assert "bib ingest" not in html
     assert "bib demo-seed" not in html
-    assert "project source" in html
+    assert "source repository" in html
+    assert 'href="https://github.com/Lyalpha/bib"' in html
     assert 'href="/api/docs"' in html
     assert "population_id" in html
     assert 'id="api-examples"' in html

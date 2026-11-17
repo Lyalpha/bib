@@ -1,12 +1,12 @@
-"""Pull a small real BPASS v2.2.1 subset.
+"""Pull a small real BPASS v2.2.1 subset for ``pytest -m realdata``.
 
-Primary source is the real ASCII products bundled with
-`hoki` (Heloise Stevance) — same files as the official release, already
-unpacked, and reliably hosted on GitHub. Zenodo's 1.5 GB fiducial zip is
-a fallback when that archive is reachable.
+Primary source is a handful of ASCII products bundled with ``hoki``
+(Heloise Stevance) — already unpacked, hosted on GitHub. Override
+``BIB_HOKI_DATA_BASE`` / ``BIB_VEGA_URL`` if those mirrors move.
 
-Also fetches the CALSPEC Vega spectrum used by ``tests/realdata`` to convert
-bib's AB magnitudes to the Vega system of the BPASS ``colours`` tables.
+This script must **never** download official IMF tarballs or stellar-model
+archives (hundreds of GB). Those stay on the operator's disk; ingest reads
+local paths only. Do not add direct tarball URLs to this repository.
 
     uv run python scripts/fetch_bpass_subset.py
     uv run pytest -m realdata
@@ -14,14 +14,19 @@ bib's AB magnitudes to the Vega system of the BPASS ``colours`` tables.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from urllib.request import Request, urlopen
 
 OUT_DIR = Path(__file__).resolve().parents[1] / "data" / "raw" / "bpass-subset"
 
-# Real v2.2.1 products shipped with hoki (release branch).
-HOKI_BASE = "https://raw.githubusercontent.com/heloises/hoki/release/hoki/data"
+# Real v2.2.1 products shipped with hoki (release branch). Small ASCII files
+# only — not the official release tarballs.
+HOKI_BASE = os.environ.get(
+    "BIB_HOKI_DATA_BASE",
+    "https://raw.githubusercontent.com/heloises/hoki/release/hoki/data",
+)
 HOKI_FILES = (
     "spectra-bin-imf135_300.z002.dat",
     "spectra-bin-imf135_300.z008.dat",
@@ -29,7 +34,9 @@ HOKI_FILES = (
     "ionizing-bin-imf135_300.z002.dat",
 )
 # CALSPEC Vega (Bohlin 2014); the file synphot itself defaults to.
-VEGA_URL = "https://ssb.stsci.edu/trds/calspec/alpha_lyr_stis_011.fits"
+VEGA_URL = os.environ.get(
+    "BIB_VEGA_URL", "https://ssb.stsci.edu/trds/calspec/alpha_lyr_stis_011.fits"
+)
 
 
 def _download(url: str, dest: Path) -> None:

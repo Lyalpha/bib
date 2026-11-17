@@ -6,6 +6,11 @@ All notable changes to bib are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Public docs no longer name internal VM hosts. `branding.yaml` points at
+  the GitHub source. Tagged GitHub releases are the Zenodo deposit path.
+
 ## [1.0.2] — 2026-11-11
 
 Custom-filter upload hardening and cookieless country stats.
@@ -106,8 +111,7 @@ First public release, served at <https://bib.warwick.ac.uk>.
   preserving visit counts, container and bare-metal deployment recipes.
 - Release metadata: `CITATION.cff`, `.zenodo.json`, `docs/references.md`,
   `CONTRIBUTING.md`.
-- Production deployment on `bib.warwick.ac.uk` (the VM hostname redirects to
-  it; HSTS); staging stays on the previous host. Topology recorded in
+- Production deployment on `https://bib.warwick.ac.uk`. Topology recorded in
   `docs/operations.md`.
 
 ### Changed

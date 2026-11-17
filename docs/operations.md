@@ -9,22 +9,19 @@ GoatCounter country stats).
 For branding, bind address, and the base env table see
 [Branding & deployment](deployment.md).
 
-## Our deployment
+## Public instance
 
-| | production | staging |
-|---|---|---|
-| public name | `https://bib.warwick.ac.uk` | `https://cyan-quail.lnx.warwick.ac.uk` |
-| host | `azure-whydah.lnx.warwick.ac.uk` (RHEL 10, Apache 2.4, PostgreSQL 16) | `cyan-quail.lnx.warwick.ac.uk` (same stack) |
-| topology | Apache `.htaccess` `[P]` proxy → gunicorn on `127.0.0.1:8001` (`systemd --user`, `svc_user`); the VM hostname 301s to the public name; HSTS set by Apache | same, no redirect |
-| what deploys | tagged releases (`v*`), via `scripts/deploy-vm.sh --host … --skip-db` or `git pull --ff-only` + `uv sync --frozen --extra prod` + `systemctl --user restart bib.service` | `main` |
-| Sentry env | `production` | `staging` |
-| data | full v2.2.1 grid (8 IMFs × bin/sin × 13 Z) + v2.3 (imf135_300, 5 α) = 338 populations; raw tarballs in `~/bpass_v2.2.1`, `~/bpass_v2.3` for future fills | copy of the same |
+The public site is **<https://bib.warwick.ac.uk>** (RHEL, Apache 2.4,
+PostgreSQL 16, gunicorn on loopback, TLS at the reverse proxy). Tagged
+releases (`v*`) deploy there via `scripts/deploy-vm.sh --host … --skip-db`
+(or `git pull --ff-only` + `uv sync --frozen --extra prod` +
+`systemctl --user restart bib.service`). A separate staging host tracks
+`main`. Sentry environments are `production` / `staging`.
 
-Production was seeded from staging with `pg_dump -Fc` / `pg_restore
---no-owner --no-privileges` (same PostgreSQL major), then `TRUNCATE
-site_daily_stat`; an idempotent `bib ingest` pass over the three manifests
-confirmed every population as already present. Nightly dumps: see
-"Schema and backups".
+The public load is the v2.2.1 SED grid (8 IMFs × bin/sin × 13 Z) plus v2.3
+(`imf135_300`, 5 α) — 338 populations. Release tarballs stay on the
+operator's disk and are **not** fetched by bib; see [Ingesting BPASS
+data](ingestion.md). Nightly dumps: "Schema and backups".
 
 ## Bind locally; proxy in front
 
@@ -359,16 +356,17 @@ Interactive OpenAPI (`/api/docs`, `/api/redoc`) is on by default. `/api` and
 2. Bump the version in `pyproject.toml`, `src/bib/__init__.py`,
    `CITATION.cff` and `.zenodo.json`; add a `## [x.y.z]` section to
    `CHANGELOG.md`; run `uv lock`.
-3. Tag and push: `git tag -a vx.y.z -m "bib x.y.z" && git push --tags`.
-   `release.yml` validates the metadata, publishes the image and creates the
-   GitHub release with the changelog section as notes.
-4. **Zenodo.** Enable the repository once at
-   <https://zenodo.org/account/settings/github/>. Every GitHub release is
-   then archived automatically; Zenodo reads `.zenodo.json` for creators,
-   licence, keywords and the `related_identifiers` that cite the BPASS
-   papers, and mints a version DOI plus a concept DOI. After the first
-   release, paste the concept DOI into `CITATION.cff` (`identifiers:`) and
-   the README badge so later versions resolve to the right record.
+3. Tag and push to GitHub: `git tag -a vx.y.z -m "bib x.y.z" && git push --tags`.
+   `release.yml` validates the metadata, publishes the image to GHCR, and
+   creates the GitHub release with the changelog section as notes.
+4. **Zenodo (GitHub harvest, not a second uploader).** Enable
+   `Lyalpha/bib` once at
+   <https://zenodo.org/account/settings/github/> **before** the first public
+   tag if you can. Zenodo watches GitHub Releases (not git tags alone),
+   reads `.zenodo.json`, and mints a version DOI plus a concept DOI. Do not
+   add a CI job that POSTs to the Zenodo API — that duplicates the deposit.
+   After the first archive, paste the concept DOI into `CITATION.cff`
+   (`identifiers:`) and the README badge.
 5. Re-run `science-regression.yml` (it also fires on the tag) and keep its
    summary with the release notes for an RNAAS-style companion paper.
 

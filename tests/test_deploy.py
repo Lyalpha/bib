@@ -20,6 +20,7 @@ SITE_SPECIFIC = (
     "svc_user",
     "db_user",
     "cyan-quail",
+    "azure-whydah",
     "helpdesk",
     "ssh2fa",
     "nrpe",
@@ -115,5 +116,37 @@ def test_deploy_script_keeps_admin_role_out_of_app_env():
 
 def test_rsync_exclude_keeps_secrets_and_raw_data_off_the_server():
     text = RSYNC_EXCLUDE.read_text()
-    for name in (".venv", ".env", "data/raw/", "*.tar.gz"):
+    for name in (".venv", ".env", "data/raw/", "*.tar.gz", "paper/"):
         assert name in text
+
+
+def test_public_docs_do_not_name_internal_hosts():
+    ops = (ROOT / "docs" / "operations.md").read_text().lower()
+    for needle in SITE_SPECIFIC:
+        if needle == "warwick":
+            continue
+        assert needle not in ops, needle
+    assert "lnx.warwick.ac.uk" not in ops
+
+
+def test_repo_has_no_direct_bpass_tarball_urls():
+    """Catalogue landing pages only — never a scraper-bait archive URL."""
+    import re
+
+    url_tar = re.compile(
+        r"https?://[^\s\"')>]+(?:bpass|BPASS)[^\s\"')>]*\.(?:tar\.gz|tgz)", re.I
+    )
+    skip_suffix = {".lock", ".min.js", ".csv"}
+    hits: list[str] = []
+    for path in ROOT.rglob("*"):
+        if not path.is_file() or path.suffix.lower() in skip_suffix:
+            continue
+        if any(part in {".git", ".venv", "node_modules", "paper"} for part in path.parts):
+            continue
+        try:
+            text = path.read_text(errors="ignore")
+        except OSError:
+            continue
+        for match in url_tar.finditer(text):
+            hits.append(f"{path.relative_to(ROOT)}: {match.group(0)}")
+    assert hits == []

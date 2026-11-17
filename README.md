@@ -62,7 +62,8 @@ A public instance should already have data loaded. This section is for
 operators who want to host their own copy. A public bib instance serves
 *derived* BPASS products (SEDs, photometry, per-age tables) under the BPASS
 team's CC BY-NC 4.0 licence with attribution; it does not mirror the release
-archives. To self-host, obtain the release files yourself:
+archives. To self-host, obtain the release files yourself from the BPASS
+**catalogue pages** (this repository does not contain direct tarball URLs):
 
 - [BPASS v2.2.1](https://warwick.ac.uk/fac/sci/physics/research/astro/research/catalogues/bpass/v2p2/)
   — population synthesis products (primary release).
@@ -72,7 +73,8 @@ archives. To self-host, obtain the release files yourself:
 
 The full releases are large (hundreds of GB with individual stellar models).
 You only need the files named in your ingest manifest. Official IMF tarballs
-(`bpass_v2.2.1_imf*.tar.gz`) can stay packed.
+(`bpass_v2.2.1_imf*.tar.gz`) can stay packed. `bib ingest` never downloads
+them.
 
 ```sh
 # create / upgrade the schema and load the bundled filter curves
@@ -121,6 +123,14 @@ small BPASS v2.2.1 subset fetched with `uv run python scripts/fetch_bpass_subset
 their measured residuals are recorded in `docs/science-notes.md`.
 
 Documentation sources live in `docs/` (`uv run mkdocs serve`).
+
+## Source and citation
+
+The public repository is **<https://github.com/Lyalpha/bib>**. Tagging a
+release (`v*`) publishes a GitHub Release; once the repo is enabled at
+[Zenodo’s GitHub settings](https://zenodo.org/account/settings/github/),
+Zenodo archives that release from `.zenodo.json` and mints a DOI. Cite the
+software with `CITATION.cff` (and the DOI, after the first archive).
 
 ## Licence
 

@@ -18,7 +18,7 @@ logo: null
 
 # Public source repository (README, ingest guide, self-hosting). Leave null
 # until the repo is published — the app will not serve the local checkout.
-source_url: null
+source_url: "https://github.com/Lyalpha/bib"
 
 # Colour palette. Defaults are a dark "deep-sky" theme.
 colors:

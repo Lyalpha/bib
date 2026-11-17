@@ -2,7 +2,9 @@
 
 bib never redistributes BPASS files: you download the release archives
 yourself, and the ingest CLI parses them into PostgreSQL with provenance
-(source filename + SHA-256) on every row.
+(source filename + SHA-256) on every row. Manifests record **landing pages**
+only; there are no direct tarball URLs in this repository, and no ingest
+script that fetches the official archives.
 
 End users of a running server do not need this page — the public Data & API
 view is a catalogue of what is loaded, not an ingest tutorial. This guide is

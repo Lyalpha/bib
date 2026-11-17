@@ -50,6 +50,12 @@
       "relation": "cites",
       "resource_type": "publication-article",
       "scheme": "doi"
+    },
+    {
+      "identifier": "https://github.com/Lyalpha/bib",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
     }
   ]
 }

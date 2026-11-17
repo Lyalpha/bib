@@ -16,7 +16,12 @@ site/
 
 # Environment / secrets
 .env
+.env.*
+!.env.example
 *.local.yaml
+
+# Unpublished paper sources (not part of the software dump)
+/paper/
 
 # Data (raw BPASS downloads and scratch artefacts live outside git)
 /data/raw/

@@ -96,3 +96,16 @@ jobs:
           files: |
             CITATION.cff
             .zenodo.json
+      - name: Zenodo archives this GitHub Release
+        run: |
+          {
+            echo "## Zenodo"
+            echo
+            echo "Once [Lyalpha/bib is enabled](https://zenodo.org/account/settings/github/),"
+            echo "Zenodo harvests this GitHub Release, reads \`.zenodo.json\`, and mints"
+            echo "a version DOI plus a concept DOI. Do **not** also POST to the Zenodo"
+            echo "API from CI — that would duplicate the deposit."
+            echo
+            echo "After the first archive, paste the concept DOI into \`CITATION.cff\`"
+            echo "(\`identifiers:\`) and the README badge."
+          } >> "$GITHUB_STEP_SUMMARY"
